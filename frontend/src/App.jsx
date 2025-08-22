@@ -24,7 +24,7 @@ function App() {
   const [loadingDownload, setLoadingDownload] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const BACKEND = "https://factura-pdf-p021.onrender.com";
+  const BACKEND = "https://factura-pdf-nvs4.onrender.com";
 
   const handlePreview = async () => {
     setErrorMsg("");
