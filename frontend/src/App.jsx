@@ -130,7 +130,7 @@ const handleDownload = async () => {
     setPage(selected);
   };
   return (
-    <div className="w-full flex flex-col items-center  mt-32 font-medium">
+    <div className="w-full mb-32 flex flex-col items-center  mt-32 font-medium">
       {page == "" ? ("") : (
         <>
           <button onClick={() => setPage("")} className=" absolute top-6 left-6 bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none" >
