@@ -655,7 +655,9 @@ app.post("/pdf-inline", async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch();
+    browser = await puppeteer.launch({
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
+});
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
     // pequeño buffer por si hay cargas externas
@@ -697,7 +699,9 @@ app.post("/pdf", async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch();
+    browser = await puppeteer.launch({
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
+});
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
     await new Promise(r => setTimeout(r, 120));
