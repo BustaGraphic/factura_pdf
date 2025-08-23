@@ -1,243 +1,69 @@
-  <div className=' p-2 grid gap-2 max-w-[587px]'>
-                <div className="relative w-max ">
+<div style={{ maxWidth: 900, margin: "40px auto", fontFamily: "system-ui, sans-serif" }}>
+      <h1 style={{ fontSize: 24, marginBottom: 12 }}>Generar PDF</h1>
 
-                    <img src="${headerUri}" alt="Logo" className="block" />
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <input
+          type="text"
+          value={name}
+          placeholder="Escribe tu nombre…"
+          onChange={(e) => setName(e.target.value)}
+          style={{
+            width: 260,
+            padding: "10px 12px",
+            fontSize: 16,
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            outline: "none",
+          }}
+        />
+        <input type="text" value={name}  />
+        <button
+          onClick={handlePreview}
+          disabled={loadingPreview}
+          style={{
+            padding: "10px 14px",
+            fontSize: 15,
+            fontWeight: 600,
+            background: loadingPreview ? "#64748b" : "#0ea5e9",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: loadingPreview ? "not-allowed" : "pointer",
+          }}
+        >
+          {loadingPreview ? "Generando preview..." : "Preview PDF"}
+        </button>
+        <button
+          onClick={handleDownload}
+          disabled={loadingDownload}
+          style={{
+            padding: "10px 14px",
+            fontSize: 15,
+            fontWeight: 600,
+            background: loadingDownload ? "#64748b" : "#16a34a",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: loadingDownload ? "not-allowed" : "pointer",
+          }}
+        >
+          {loadingDownload ? "Preparando..." : "Descargar PDF"}
+        </button>
+      </div>
 
+      {errorMsg && (
+        <p style={{ color: "#ef4444", marginTop: 10 }}>{errorMsg}</p>
+      )}
 
-                    <div className='absolute flex items-center left-6 top-1/2 transform -translate-y-1/2 w-auto space-x-6 h-auto object-contain'>
-                        <img
-                            src="${logoRepsolUri}"
-                            alt="Logo"
+      {pdfUrl && (
+        <div style={{ marginTop: 20 }}>
+          <iframe
+            src={pdfUrl}
+            title="preview"
+            style={{ width: "100%", height: "80vh", border: "1px solid #e2e8f0" }}
+          />
+        </div>
+      )}
 
-                        />
-                        <div className='h-6 w-[1px] bg-[#011E37] rounded-full' />
-                        <div className='text-xs text-[#011E37] font-medium'>
-                            Comparativa Repsol
-                        </div>
-                    </div>
-
-                </div>
-                <div className='flex flex-col -space-y-0.5 '>
-                    <div className='bg-[#F0F5F8] text-xs py-1 pl-2 rounded-t-[10px] border-[2px] border-[#DBE6F0] '>
-                        SIMULACIÓN DE TU FACTURA CON REPSOL
-                    </div>
-                    <div className=' text-[8px] font-medium py-1 text-[#6A8298] px-2 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_0.9fr_1.1fr] gap-3'>
-                        <div className='flex justify-between'>
-                            <div className=''>Concepto</div>
-                            <div className=''>Importe</div>
-                        </div>
-                        <div>
-                            Cálculo
-                        </div>
-                        <div>
-                            Descripción
-                        </div>
-                    </div>
-                    <div className=' text-[8px] font-medium py-2.5 text-[#011E37] px-2 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_0.9fr_1.1fr] gap-x-3 gap-y-1.5' >
-                        <div className="col-span-3 flex justify-between py-0.5 px-1 rounded-sm bg-[#FFEBCC] w-[calc((100%-2*16px)/3+8px)] -ml-[4px] -mr-[4px] justify-self-start ">
-                            <div className='flex items-center space-x-1'>
-                                <img
-                                    src="${boltUri}"
-                                    alt="Logo"
-                                    className='h-2.5 w-2.5'
-                                />
-                                <div>
-                                    Término fijo
-                                </div>
-                            </div>
-
-                            <div>
-                                87,3€
-                            </div>
-                        </div>
-                        <div className='flex flex-col space-y-1.5'>
-
-
-                            <div className='flex flex-col space-y-1'>
-                                <div className='flex justify-between'>
-
-                                    <div>
-                                        Período 1
-                                    </div>
-                                    <div>
-                                        36,45€
-                                    </div>
-                                </div>
-                                <div className='flex justify-between'>
-
-                                    <div>
-                                        Período 2
-                                    </div>
-                                    <div>
-                                        36,45€
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className='flex flex-col space-y-1.5'>
-                            <div className='flex flex-col space-y-1'>
-
-                                <div className='flex justify-between w-full'>
-                                    <div>
-                                        5,750 kW
-                                    </div>
-                                    <div>
-                                        ×
-                                    </div>
-                                    <div>
-                                        30 días
-                                    </div> <div>
-                                        ×
-                                    </div>
-                                    <div>
-                                        0,0819 €/kW día
-                                    </div>
-                                </div>
-
-                                <div className='flex justify-between w-full'>
-                                    <div>
-                                        5,750 kW
-                                    </div>
-                                    <div>
-                                        ×
-                                    </div>
-                                    <div>
-                                        30 días
-                                    </div> <div>
-                                        ×
-                                    </div>
-                                    <div>
-                                        0,0819 €/kW día
-                                    </div>
-                                </div>
-                                
-                            </div>
-                        </div>
-                        <div className='flex flex-col space-y-1.5'>
-
-
-                            <div className='flex  space-y-1 h-full items-start '>
-                                <div className='flex justify-between text-[7px]'>
-
-                                    Es el importe que pagas por estar conectado
-                                    a la red a tu distribuidora y por la cuota de
-                                    comercialización a Repsol.
-
-                                </div>
-
-                            </div>
-                        </div>
-
-                    </div>
-                    <div className=' text-[8px] font-medium py-2.5 text-[#011E37] px-2 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_0.9fr_1.1fr] gap-x-3 gap-y-1.5' >
-                        <div className="col-span-3 flex justify-between py-0.5 px-1 rounded-sm bg-[#FFEBCC] w-[calc((100%-2*16px)/3+8px)] -ml-[4px] -mr-[4px] justify-self-start ">
-                            <div className='flex items-center space-x-1'>
-                                <img
-                                    src="${bombillaUri}"
-                                    alt="Logo"
-                                    className='h-2.5 w-2.5'
-                                />
-                                <div>
-                                    Energía
-                                </div>
-                            </div>
-
-                            <div>
-                                87,3€
-                            </div>
-                        </div>
-                        <div className='flex flex-col space-y-1.5'>
-
-
-                            <div className='flex flex-col space-y-1'>
-                                <div className='flex justify-between'>
-
-                                    <div>
-                                        Consumo (P1)
-                                    </div>
-                                    <div>
-                                        36,45€
-                                    </div>
-                                </div>
-                                <div className='flex justify-between'>
-
-                                    <div>
-                                        Consumo (P2)
-                                    </div>
-                                    <div>
-                                        36,45€
-                                    </div>
-                                </div>
-                                <div className='flex justify-between'>
-
-                                    <div>
-                                        Consumo (P3)
-                                    </div>
-                                    <div>
-                                        36,45€
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className='flex flex-col space-y-1.5'>
-                            <div className='flex flex-col space-y-1'>
-
-                                <div className='flex space-x-1 w-full justify-end '>
-                                    <div>
-                                        74 kWh
-                                    </div>
-                                    <div>
-                                        ×
-                                    </div>
-
-                                    <div>
-                                        0,1299 €/kWh
-                                    </div>
-                                </div>
-                                 <div className='flex space-x-1 w-full justify-end '>
-                                    <div>
-                                        62 kWh
-                                    </div>
-                                    <div>
-                                        ×
-                                    </div>
-
-                                    <div>
-                                        0,1299 €/kWh
-                                    </div>
-                                </div>
-                                <div className='flex space-x-1 w-full justify-end '>
-                                    <div>
-                                        120 kWh
-                                    </div>
-                                    <div>
-                                        ×
-                                    </div>
-
-                                    <div>
-                                        0,1299 €/kWh
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className='flex flex-col space-y-1.5'>
-
-
-                            <div className='flex  space-y-1 h-full items-start '>
-                                <div className='flex justify-between text-[7px]'>
-
-                                    Es el importe variable que pagas por la
-                                    electricidad que has utilizado. Se calcula en
-                                    función de los kWh consumidos y el precio
-                                    de cada kWh.
-
-                                </div>
-
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-
-            </div>
+     
+    </div>

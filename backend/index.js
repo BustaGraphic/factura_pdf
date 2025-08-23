@@ -68,6 +68,7 @@ function euro(n) {
   return (t === "—" ? "—" : `${t}€`);
 }
 
+
 // Plantilla HTML (usa class, no className). Añadimos ".pdf-root" como ancla estable.
 const buildHtml = (data = {}) => {
   const {
@@ -91,15 +92,33 @@ const buildHtml = (data = {}) => {
   const potenciaKwNum = wattsToKwNumber(potencia);            // 4.6 para 4600W
   const potenciaKwText = formatNumberComma(potenciaKwNum, 1); // "4,6"
   const diasNum = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
-  const precioKwDia = 0.0819;
-
-  // Importe por período (ajusta si cada periodo tiene lógica distinta)
-  const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
-  const importeP1 = importeTerminoFijo;
-  const importeP2 = importeTerminoFijo;
-  const totalTerminoFijo = importeP1 + importeP2;
+ // Cálculo del término fijo por periodos
+let importeP1 = 0;
+let importeP2 = 0;
+let totalTerminoFijo = 0;
   const t = String(tarifa || "").trim();
 
+if (t === "Indexado") {
+  // Periodo 1 y 2 con precios distintos
+  importeP1 = potenciaKwNum * diasNum * 0.0717;
+  importeP2 = potenciaKwNum * diasNum * 0.0031;
+  totalTerminoFijo = importeP1 + importeP2;
+} else {
+  // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
+  const precioKwDia = 0.0819;
+  const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
+  importeP1 = importeTerminoFijo;
+  importeP2 = importeTerminoFijo;
+  totalTerminoFijo = importeP1 + importeP2;
+}
+
+let precioKwDiaTextP1 = "0,0819 €/kW día";
+let precioKwDiaTextP2 = "0,0819 €/kW día";
+
+if (t === "Indexado") {
+  precioKwDiaTextP1 = "0,0717 €/kW día";
+  precioKwDiaTextP2 = "0,0031 €/kW día";
+}
   // Consumos numéricos
   const consumoTotal = toNum(consumo);
   const cP1 = toNum(consumoP1);
@@ -287,14 +306,14 @@ const ahorroText = euro(ahorroNum);
   <div>×</div>
   <div>${diasFactura} días</div>
   <div>×</div>
-  <div>0,0819 €/kW día</div>
+<div>${precioKwDiaTextP1}</div>
 </div>
 <div class="flex justify-between w-full">
   <div>${potenciaKwText} kW</div>
   <div>×</div>
   <div>${diasFactura} días</div>
   <div>×</div>
-  <div>0,0819 €/kW día</div>
+<div>${precioKwDiaTextP2}</div>
 </div>
 
             </div>
@@ -501,12 +520,9 @@ const ahorroText = euro(ahorroNum);
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
                 <div>Gasolina</div>
-                <div>36,45€</div>
+                <div>15c€/L</div>
               </div>
-              <div class="flex justify-between">
-                <div>Excedentes</div>
-                <div>36,45€</div>
-              </div>
+              
               <div class="flex justify-between">
                 <div>Tarjeta Regalo</div>
                 <div>80€</div>
@@ -520,27 +536,14 @@ const ahorroText = euro(ahorroNum);
             </div>
           </div>
 
-          <div class="flex flex-col space-y-1.5">
-            <div class="flex space-x-1 w-full justify-end">
-              <div>74 l</div>
-              <div>×</div>
-              <div>0,15 €/litro</div>
-            </div>
-            <div class="flex space-x-1 w-full justify-end">
-              <div>74 kW</div>
-              <div>×</div>
-              <div>0,079 €/kW</div>
-            </div>
-           
-          </div>
+          
 
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
                 Aquí tienes otros importes a tu favor que has
-                conseguido por estar en Repsol, como saldo
-                de Waylet, el ahorro generado por tu Batería
-                Virtual, excedente solar, etc...
+                conseguido por estar en Repsol, como cashbacks
+                de Waylet, ahorro en la gasolina, en recargas eléctricas en las vías públicas y tarjetas regaló.
               </div>
             </div>
           </div>
