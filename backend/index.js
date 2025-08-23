@@ -128,33 +128,33 @@ const buildHtml = (data = {}) => {
   const potenciaKwNum = wattsToKwNumber(potencia);            // 4.6 para 4600W
   const potenciaKwText = formatNumberComma(potenciaKwNum, 1); // "4,6"
   const diasNum = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
- // Cálculo del término fijo por periodos
-let importeP1 = 0;
-let importeP2 = 0;
-let totalTerminoFijo = 0;
+  // Cálculo del término fijo por periodos
+  let importeP1 = 0;
+  let importeP2 = 0;
+  let totalTerminoFijo = 0;
   const t = String(tarifa || "").trim();
 
-if (t === "Indexado") {
-  // Periodo 1 y 2 con precios distintos
-  importeP1 = potenciaKwNum * diasNum * 0.0717;
-  importeP2 = potenciaKwNum * diasNum * 0.0031;
-  totalTerminoFijo = importeP1 + importeP2;
-} else {
-  // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
-  const precioKwDia = 0.0819;
-  const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
-  importeP1 = importeTerminoFijo;
-  importeP2 = importeTerminoFijo;
-  totalTerminoFijo = importeP1 + importeP2;
-}
+  if (t === "Indexado") {
+    // Periodo 1 y 2 con precios distintos
+    importeP1 = potenciaKwNum * diasNum * 0.0717;
+    importeP2 = potenciaKwNum * diasNum * 0.0031;
+    totalTerminoFijo = importeP1 + importeP2;
+  } else {
+    // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
+    const precioKwDia = 0.0819;
+    const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
+    importeP1 = importeTerminoFijo;
+    importeP2 = importeTerminoFijo;
+    totalTerminoFijo = importeP1 + importeP2;
+  }
 
-let precioKwDiaTextP1 = "0,0819 €/kW día";
-let precioKwDiaTextP2 = "0,0819 €/kW día";
+  let precioKwDiaTextP1 = "0,0819 €/kW día";
+  let precioKwDiaTextP2 = "0,0819 €/kW día";
 
-if (t === "Indexado") {
-  precioKwDiaTextP1 = "0,0717 €/kW día";
-  precioKwDiaTextP2 = "0,0031 €/kW día";
-}
+  if (t === "Indexado") {
+    precioKwDiaTextP1 = "0,0717 €/kW día";
+    precioKwDiaTextP2 = "0,0031 €/kW día";
+  }
   // Consumos numéricos
   const consumoTotal = toNum(consumo);
   const cP1 = toNum(consumoP1);
@@ -267,14 +267,14 @@ if (t === "Indexado") {
   // =====================
   // ACTUAL y AHORRO
   // =====================
- // ACTUAL: exactamente el valor de "otros" que llega del front
-const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
-const actualText = euro(otrosNum);
+  // ACTUAL: exactamente el valor de "otros" que llega del front
+  const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
+  const actualText = euro(otrosNum);
 
-// AHORRO: otros - totalGeneral, pero nunca negativo
-const ahorroBruto = otrosNum - (totalGeneral || 0);
-const ahorroNum = Math.max(0, ahorroBruto);
-const ahorroText = euro(ahorroNum);
+  // AHORRO: otros - totalGeneral, pero nunca negativo
+  const ahorroBruto = otrosNum - (totalGeneral || 0);
+  const ahorroNum = Math.max(0, ahorroBruto);
+  const ahorroText = euro(ahorroNum);
 
 
   return `
@@ -682,17 +682,17 @@ app.post("/pdf-inline", async (req, res) => {
 
   let browser;
   try {
-   browser = await puppeteer.launch({
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
-});
-const page = await browser.newPage();
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
 
-// Carga más tolerante a recursos externos
-await page.setContent(html, { waitUntil: "domcontentloaded" });
-await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => {});
-await new Promise((r) => setTimeout(r, 150));
+    // Carga más tolerante a recursos externos
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
+    await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => { });
+    await new Promise((r) => setTimeout(r, 150));
 
-const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Cache-Control", "no-store");
@@ -730,17 +730,17 @@ app.post("/pdf", async (req, res) => {
 
   let browser;
   try {
-   browser = await puppeteer.launch({
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
-});
-const page = await browser.newPage();
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+    const page = await browser.newPage();
 
-// Carga más tolerante a recursos externos
-await page.setContent(html, { waitUntil: "domcontentloaded" });
-await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => {});
-await new Promise((r) => setTimeout(r, 150));
+    // Carga más tolerante a recursos externos
+    await page.setContent(html, { waitUntil: "domcontentloaded" });
+    await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => { });
+    await new Promise((r) => setTimeout(r, 150));
 
-const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
