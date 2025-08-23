@@ -25,7 +25,8 @@ function App() {
   const [errorMsg, setErrorMsg] = useState("");
   const [precioRepsol, setPrecioRepsol] = useState(""); // string mostrado en el input
 
-  const BACKEND = "http://localhost:3001";
+const BACKEND = "https://factura-pdf-nvs4.onrender.com";
+
 
   const handlePreview = async () => {
     setErrorMsg("");
