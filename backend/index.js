@@ -8,8 +8,7 @@ const app = express();
 
 // En local, el front suele estar en http://localhost:5173
 // En producción cambia el origin a tu dominio de Vercel
-const cors = require('cors');
-app.use(cors({ origin: "https://factura-pdf.vercel.app" }));
+app.use(cors({ origin: "http://localhost:5173" }));
 // ...rutas después
 
 app.use(express.json({ limit: "2mb" }));
@@ -700,7 +699,7 @@ app.post("/pdf", async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="pdf_generado_${(name || "sin_nombre")
+      `attachment; filename="Repsol_${(name || "sin_nombre")
         .toString()
         .replace(/[^\w\d-_]/g, "_")}.pdf"`
     );

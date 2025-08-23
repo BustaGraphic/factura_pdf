@@ -216,7 +216,7 @@ function App() {
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pdf_generado_${name}.pdf`;
+      a.download = `Repsol_${name}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
