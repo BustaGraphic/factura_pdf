@@ -8,17 +8,41 @@ const app = express();
 
 // En local, el front suele estar en http://localhost:5173
 // En producción cambia el origin a tu dominio de Vercel
+// CORS: permitir front en Render y localhost
+const allowedOrigins = [
+  "https://repsol-comparativa.onrender.com",
+  "http://localhost:5173",
+];
+
 app.use(
-cors({
-origin: [
-"https://repsol-comparativa.onrender.com",
-"http://localhost:5173",
-],
-methods: ["GET", "POST", "OPTIONS"],
-allowedHeaders: ["Content-Type", "Authorization"],
-credentials: false, // no usas cookies; si algún día usas, pon true y configura el front con credentials: 'include'
-})
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // permite curl/Postman
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false,
+  })
 );
+
+// Preflight global
+app.options("*", cors());
+
+// Refuerzo de headers (opcional pero útil con proxies/CDN)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  }
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 // ...rutas después
 
 app.use(express.json({ limit: "2mb" }));
@@ -658,14 +682,18 @@ app.post("/pdf-inline", async (req, res) => {
 
   let browser;
   try {
-   const browser = await puppeteer.launch({
-args: ["--no-sandbox", "--disable-setuid-sandbox"],
+   browser = await puppeteer.launch({
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
 });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    // pequeño buffer por si hay cargas externas
-    await new Promise(r => setTimeout(r, 120));
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+const page = await browser.newPage();
+
+// Carga más tolerante a recursos externos
+await page.setContent(html, { waitUntil: "domcontentloaded" });
+await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => {});
+await new Promise((r) => setTimeout(r, 150));
+
+const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(pdfBuffer);
@@ -702,13 +730,17 @@ app.post("/pdf", async (req, res) => {
 
   let browser;
   try {
-   const browser = await puppeteer.launch({
-args: ["--no-sandbox", "--disable-setuid-sandbox"],
+   browser = await puppeteer.launch({
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
 });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    await new Promise(r => setTimeout(r, 120));
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+const page = await browser.newPage();
+
+// Carga más tolerante a recursos externos
+await page.setContent(html, { waitUntil: "domcontentloaded" });
+await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => {});
+await new Promise((r) => setTimeout(r, 150));
+
+const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
