@@ -719,7 +719,7 @@ app.post("/pdf", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend escuchando en puerto ${PORT}`);
-});
+const port = process.env.PORT || 10000
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`)
+})
