@@ -8,7 +8,14 @@ const app = express();
 
 // En local, el front suele estar en http://localhost:5173
 // En producción cambia el origin a tu dominio de Vercel
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(
+  cors({
+    origin: [
+      "https://repsol-comparativa.onrender.com",
+      "http://localhost:5173",
+    ],
+  })
+);
 // ...rutas después
 
 app.use(express.json({ limit: "2mb" }));
@@ -714,6 +721,5 @@ app.post("/pdf", async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Backend escuchando en http://localhost:${PORT}`);
-  console.log(`Preview HTML:   http://localhost:${PORT}/preview?name=TuNombre&tarifa=Fijo`);
+  console.log(`Backend escuchando en puerto ${PORT}`);
 });
