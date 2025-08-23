@@ -10,12 +10,15 @@ const app = express();
 // En local, el front suele estar en http://localhost:5173
 // En producción cambia el origin a tu dominio de Vercel
 app.use(
-  cors({
-    origin: [
-      "https://repsol-comparativa.onrender.com",
-      "http://localhost:5173",
-    ],
-  })
+cors({
+origin: [
+"https://repsol-comparativa.onrender.com",
+"http://localhost:5173",
+],
+methods: ["GET", "POST", "OPTIONS"],
+allowedHeaders: ["Content-Type", "Authorization"],
+credentials: false, // no usas cookies; si algún día usas, pon true y configura el front con credentials: 'include'
+})
 );
 // ...rutas después
 
