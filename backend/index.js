@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer");
-const { executablePath } = require("puppeteer");
 const fs = require("fs");
 const path = require("path");
 
@@ -659,9 +658,8 @@ app.post("/pdf-inline", async (req, res) => {
 
   let browser;
   try {
-   browser = await puppeteer.launch({
+   const browser = await puppeteer.launch({
 args: ["--no-sandbox", "--disable-setuid-sandbox"],
-executablePath: await executablePath(),
 });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -704,9 +702,8 @@ app.post("/pdf", async (req, res) => {
 
   let browser;
   try {
-   browser = await puppeteer.launch({
+   const browser = await puppeteer.launch({
 args: ["--no-sandbox", "--disable-setuid-sandbox"],
-executablePath: await executablePath(),
 });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
