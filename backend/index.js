@@ -8,7 +8,10 @@ const app = express();
 
 // En local, el front suele estar en http://localhost:5173
 // En producción cambia el origin a tu dominio de Vercel
-app.use(cors({ origin: "http://localhost:5173" }));
+const cors = require('cors');
+app.use(cors({ origin: "https://factura-pdf.vercel.app" }));
+// ...rutas después
+
 app.use(express.json({ limit: "2mb" }));
 
 // Utilidad: convierte un archivo (png/jpg/svg) a data URI

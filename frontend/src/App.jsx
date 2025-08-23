@@ -60,98 +60,98 @@ function App() {
   const wattsToKw = (w) => toNum(w) / 1000; // 4600 -> 4.6
   const fmtMoney = (n) => (Number.isFinite(n) ? n.toFixed(2).replace(".", ",") : "0,00");
   useEffect(() => {
-  const dias = toNum(diasFactura);
-  const potenciaKw = wattsToKw(potencia);
+    const dias = toNum(diasFactura);
+    const potenciaKw = wattsToKw(potencia);
 
-  let energia = 0;
-  let terminoFijo = 0;
-  let totalVarios = 0;
-  let impElectrico = 0;
+    let energia = 0;
+    let terminoFijo = 0;
+    let totalVarios = 0;
+    let impElectrico = 0;
 
-  if (selected === "Fijo") {
-    const consumoNum = toNum(consumo);
-    energia = consumoNum * 0.1299;
-    terminoFijo = potenciaKw * dias * 0.0819 * 2;
+    if (selected === "Fijo") {
+      const consumoNum = toNum(consumo);
+      energia = consumoNum * 0.1299;
+      terminoFijo = potenciaKw * dias * 0.0819 * 2;
 
-    // Varios: bono y alquiler (reglas actuales)
-    const bonoTotalFront = toNum(bonoSocial);
-    const alquilerTotalFront = toNum(alquilerContador);
-    const bonoBaseDia = 0.012742;
-    const alquilerBaseDia = 0.02663;
-    const bonoTotal = bonoTotalFront > 0 ? bonoTotalFront : dias * bonoBaseDia;
-    const alquilerTotal = alquilerTotalFront > 0 ? alquilerTotalFront : dias * alquilerBaseDia;
-    totalVarios = bonoTotal + alquilerTotal;
+      // Varios: bono y alquiler (reglas actuales)
+      const bonoTotalFront = toNum(bonoSocial);
+      const alquilerTotalFront = toNum(alquilerContador);
+      const bonoBaseDia = 0.012742;
+      const alquilerBaseDia = 0.02663;
+      const bonoTotal = bonoTotalFront > 0 ? bonoTotalFront : dias * bonoBaseDia;
+      const alquilerTotal = alquilerTotalFront > 0 ? alquilerTotalFront : dias * alquilerBaseDia;
+      totalVarios = bonoTotal + alquilerTotal;
 
-    // Impuesto eléctrico: 5,11269632% sobre (energía + término fijo)
-    impElectrico = (energia + terminoFijo) * 0.0511269632;
+      // Impuesto eléctrico: 5,11269632% sobre (energía + término fijo)
+      impElectrico = (energia + terminoFijo) * 0.0511269632;
 
-  } else if (selected === "Exclusivo") {
-    const consumoNum = toNum(consumo);
-    energia = consumoNum * 0.1099;
-    terminoFijo = potenciaKw * dias * 0.0819 * 2;
+    } else if (selected === "Exclusivo") {
+      const consumoNum = toNum(consumo);
+      energia = consumoNum * 0.1099;
+      terminoFijo = potenciaKw * dias * 0.0819 * 2;
 
-    const bonoTotalFront = toNum(bonoSocial);
-    const alquilerTotalFront = toNum(alquilerContador);
-    const bonoBaseDia = 0.012742;
-    const alquilerBaseDia = 0.02663;
-    const bonoTotal = bonoTotalFront > 0 ? bonoTotalFront : dias * bonoBaseDia;
-    const alquilerTotal = alquilerTotalFront > 0 ? alquilerTotalFront : dias * alquilerBaseDia;
-    totalVarios = bonoTotal + alquilerTotal;
+      const bonoTotalFront = toNum(bonoSocial);
+      const alquilerTotalFront = toNum(alquilerContador);
+      const bonoBaseDia = 0.012742;
+      const alquilerBaseDia = 0.02663;
+      const bonoTotal = bonoTotalFront > 0 ? bonoTotalFront : dias * bonoBaseDia;
+      const alquilerTotal = alquilerTotalFront > 0 ? alquilerTotalFront : dias * alquilerBaseDia;
+      totalVarios = bonoTotal + alquilerTotal;
 
-    impElectrico = (energia + terminoFijo) * 0.0511269632;
+      impElectrico = (energia + terminoFijo) * 0.0511269632;
 
-  } else if (selected === "Indexado") {
-    const cP1 = toNum(consumoP1);
-    const cP2 = toNum(consumoP2);
-    const cP3 = toNum(consumoP3);
-    energia = cP1 * 0.154 + cP2 * 0.103 + cP3 * 0.0724;
+    } else if (selected === "Indexado") {
+      const cP1 = toNum(consumoP1);
+      const cP2 = toNum(consumoP2);
+      const cP3 = toNum(consumoP3);
+      energia = cP1 * 0.154 + cP2 * 0.103 + cP3 * 0.0724;
 
-    const tramo1 = potenciaKw * dias * 0.0717;
-    const tramo2 = potenciaKw * dias * 0.0031;
-    terminoFijo = tramo1 + tramo2;
+      const tramo1 = potenciaKw * dias * 0.0717;
+      const tramo2 = potenciaKw * dias * 0.0031;
+      terminoFijo = tramo1 + tramo2;
 
-    const bonoTotalFront = toNum(bonoSocial);
-    const alquilerTotalFront = toNum(alquilerContador);
-    const bonoBaseDia = 0.012742;
-    const alquilerBaseDia = 0.02663;
-    const bonoTotal = bonoTotalFront > 0 ? bonoTotalFront : dias * bonoBaseDia;
-    const alquilerTotal = alquilerTotalFront > 0 ? alquilerTotalFront : dias * alquilerBaseDia;
-    totalVarios = bonoTotal + alquilerTotal;
+      const bonoTotalFront = toNum(bonoSocial);
+      const alquilerTotalFront = toNum(alquilerContador);
+      const bonoBaseDia = 0.012742;
+      const alquilerBaseDia = 0.02663;
+      const bonoTotal = bonoTotalFront > 0 ? bonoTotalFront : dias * bonoBaseDia;
+      const alquilerTotal = alquilerTotalFront > 0 ? alquilerTotalFront : dias * alquilerBaseDia;
+      totalVarios = bonoTotal + alquilerTotal;
 
-    impElectrico = (energia + terminoFijo) * 0.0511269632;
+      impElectrico = (energia + terminoFijo) * 0.0511269632;
 
-  } else if (selected === "Gas") {
-    // Gas: sin potencia, sin bono; reglas específicas
-    const consumoNum = toNum(consumo);
+    } else if (selected === "Gas") {
+      // Gas: sin potencia, sin bono; reglas específicas
+      const consumoNum = toNum(consumo);
 
-    // Energía
-    energia = consumoNum * 0.079;
+      // Energía
+      energia = consumoNum * 0.079;
 
-    // Término fijo
-    terminoFijo = dias * 0.216;
+      // Término fijo
+      terminoFijo = dias * 0.216;
 
-    // Varios: solo alquiler = días * 0.0209
-    totalVarios = dias * 0.019;
+      // Varios: solo alquiler = días * 0.0209
+      totalVarios = dias * 0.019;
 
-    // Impuesto eléctrico del gas (según tu indicación): kWh * 0.00234 €
-    impElectrico = consumoNum * 0.00234;
-  }
+      // Impuesto eléctrico del gas (según tu indicación): kWh * 0.00234 €
+      impElectrico = consumoNum * 0.00234;
+    }
 
-  const subtotal = energia + terminoFijo + totalVarios + impElectrico;
-  const totalConIva = subtotal * 1.21;
+    const subtotal = energia + terminoFijo + totalVarios + impElectrico;
+    const totalConIva = subtotal * 1.21;
 
-  setPrecioRepsol(fmtMoney(totalConIva));
-}, [
-  selected,
-  consumo,
-  consumoP1,
-  consumoP2,
-  consumoP3,
-  potencia,
-  diasFactura,
-  bonoSocial,
-  alquilerContador,
-]);
+    setPrecioRepsol(fmtMoney(totalConIva));
+  }, [
+    selected,
+    consumo,
+    consumoP1,
+    consumoP2,
+    consumoP3,
+    potencia,
+    diasFactura,
+    bonoSocial,
+    alquilerContador,
+  ]);
 
 
 
@@ -234,7 +234,7 @@ function App() {
     setPage(selected);
   };
   return (
-    <div className="w-full flex flex-col items-center  mt-20 font-medium">
+    <div className="w-full mb-32 flex flex-col items-center  mt-20 font-medium">
       {page == "" ? ("") : (
         <>
           <button onClick={() => setPage("")} className=" absolute top-6 left-6 bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none" >
@@ -440,28 +440,28 @@ function App() {
           </div>
 
         </div>
-<div className=" w-full max-w-80 flex flex-col items-start" >
-            <div className=" text-[#43637D] ">
-              Precio con Repsol
-            </div>
-            <div className="relative w-full flex justify-center">
-              <input
-                type="text"
-                value={precioRepsol}
-                readOnly
-                className="w-full max-w-80 appearance-none bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none"
-              />
-              <div className="absolute inset-y-0 right-2 flex items-center text-[#43637D] pointer-events-none">
-                €
-              </div>
-            </div>
-
-
+        <div className=" w-full max-w-80 flex flex-col items-start" >
+          <div className=" text-[#43637D] ">
+            Precio con Repsol
           </div>
+          <div className="relative w-full flex justify-center">
+            <input
+              type="text"
+              value={precioRepsol}
+              readOnly
+              className="w-full max-w-80 appearance-none bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none"
+            />
+            <div className="absolute inset-y-0 right-2 flex items-center text-[#43637D] pointer-events-none">
+              €
+            </div>
+          </div>
+
+
+        </div>
         <button onClick={handleDownload} className="w-full max-w-80 bg-[#FC9F36] mt-2  border-2 border-[#FC9F36]/50 text-white rounded-lg py-1.5 px-2 font-medium  ">
           Descargar
         </button>
-      </div>) : page=="Gas"? (
+      </div>) : page == "Gas" ? (
         <div className="flex-col flex items-center w-screen space-y-2 mt-6">
           <div className=" w-full max-w-80 flex flex-col items-start" >
             <div className=" text-[#43637D] ">
@@ -475,7 +475,7 @@ function App() {
             </div>
 
           </div>
-          
+
           <div className=" w-full max-w-80 flex flex-col items-start" >
             <div className=" text-[#43637D] ">
               Días Factura
@@ -489,7 +489,7 @@ function App() {
             </div>
 
           </div>
-          
+
           <div className=" w-full max-w-80 flex flex-col items-start" >
             <div className=" text-[#43637D] ">
               Alquiler Contador
@@ -540,7 +540,7 @@ function App() {
           </button>
 
         </div>
-      ): (
+      ) : (
         <div className="flex-col flex items-center w-screen space-y-2 mt-6">
 
           <div className="text-xl font-medium mb-3 ">
@@ -550,7 +550,7 @@ function App() {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre Cliente" className="w-full max-w-80 appearance-none mb-2 bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none " />
             <div onClick={() => setSelector(prev => !prev)} className="flex items-center justify-between w-full max-w-80  bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium ">
               <div>
-                {selected == "Fijo" ? ("Plan Fijo 24h") : selected == "Exclusivo" ? ("Fijo Explusivo") : selected == "Indexado" ? ("Plan Indexado"):("Plan Gas")}
+                {selected == "Fijo" ? ("Plan Fijo 24h") : selected == "Exclusivo" ? ("Fijo Explusivo") : selected == "Indexado" ? ("Plan Indexado") : ("Plan Gas")}
               </div>
               <img src={down} alt="down" className={`h-6 w-6 select-none transition-transform duration-200 ${selector ? "rotate-180" : "rotate-0"}`} />
             </div>
