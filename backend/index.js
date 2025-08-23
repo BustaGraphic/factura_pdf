@@ -6,7 +6,7 @@ const path = require("path");
 
 const app = express();
 
-// CORS: permitir front en Render y localhost
+// 1) CORS: permitir tu front y localhost
 const allowedOrigins = [
   "https://repsol-comparativa.onrender.com",
   "http://localhost:5173",
@@ -15,7 +15,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true); // permite curl/Postman
+      if (!origin) return cb(null, true); // curl/Postman
       if (allowedOrigins.includes(origin)) return cb(null, true);
       return cb(new Error("Not allowed by CORS"));
     },
@@ -25,10 +25,10 @@ app.use(
   })
 );
 
-// Preflight global
+// 2) Preflight global
 app.options("*", cors());
 
-// Refuerzo de headers
+// 3) Refuerzo de headers
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (!origin || allowedOrigins.includes(origin)) {
@@ -41,10 +41,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body parser
+// 4) Body parser
 app.use(express.json({ limit: "2mb" }));
 
-// Utilidad: convierte un archivo (png/jpg/svg) a data URI
+// 5) Utilidad: Data URI de assets locales
 const toDataUri = (filePath) => {
   const ext = path.extname(filePath).toLowerCase();
   const mime =
@@ -57,10 +57,9 @@ const toDataUri = (filePath) => {
   return `data:${mime};base64,${base64}`;
 };
 
-// Rutas a tus imágenes en ./assets
+// 6) Carga de assets
 const assetsDir = path.resolve(__dirname, "assets");
 
-// Carga imágenes una sola vez
 const logoRepsolUri = toDataUri(path.join(assetsDir, "repsol.svg"));
 const iconRepsolUri = toDataUri(path.join(assetsDir, "repsol_icon.jpg"));
 const boltUri = toDataUri(path.join(assetsDir, "bolt.svg"));
@@ -77,12 +76,13 @@ const userUri = toDataUri(path.join(assetsDir, "user.svg"));
 const mailUri = toDataUri(path.join(assetsDir, "mail.svg"));
 const percentUri = toDataUri(path.join(assetsDir, "percent.svg"));
 const headerUri = toDataUri(path.join(assetsDir, "repsol_header.png"));
-const header2Uri = toDataUri(path.join(assetsDir, "header.svg")); // si no la usas, puedes quitarla
+const header2Uri = toDataUri(path.join(assetsDir, "header.svg")); // opcional
 
+// 7) Helpers numéricos
 function wattsToKwNumber(watts) {
   const n = Number(String(watts ?? "").replace(",", "."));
   if (!Number.isFinite(n)) return 0;
-  return n / 1000; // 4600 -> 4.6
+  return n / 1000;
 }
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
@@ -96,7 +96,6 @@ function euro(n) {
   const t = formatNumberComma(n, 2);
   return t === "—" ? "—" : `${t}€`;
 }
-
 // Plantilla HTML (usa class, no className). Añadimos ".pdf-root" como ancla estable.
 const buildHtml = (data = {}) => {
   const {
@@ -508,7 +507,6 @@ app.get("/preview", (req, res) => {
   return res.status(200).send(html);
 });
 
-// PDF inline (application/pdf en respuesta, sin "attachment")
 app.post("/pdf-inline", async (req, res) => {
   const {
     name, comercial, tarifa,
@@ -537,9 +535,12 @@ app.post("/pdf-inline", async (req, res) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
+
+    // Carga robusta
     await page.setContent(html, { waitUntil: "domcontentloaded" });
     await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 150));
+
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -553,7 +554,6 @@ app.post("/pdf-inline", async (req, res) => {
   }
 });
 
-// PDF con descarga (attachment)
 app.post("/pdf", async (req, res) => {
   const {
     name, comercial, tarifa,
@@ -582,9 +582,12 @@ app.post("/pdf", async (req, res) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
+
+    // Carga robusta
     await page.setContent(html, { waitUntil: "domcontentloaded" });
     await page.waitForNetworkIdle({ timeout: 3000 }).catch(() => {});
     await new Promise((r) => setTimeout(r, 150));
+
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
 
     res.setHeader("Content-Type", "application/pdf");
@@ -603,6 +606,7 @@ app.post("/pdf", async (req, res) => {
   }
 });
 
+// 10) Arranque
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Backend escuchando en puerto ${PORT}`);
