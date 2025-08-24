@@ -17,18 +17,23 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}))
+}));
 
 app.use(express.json({ limit: "2mb" }));
 
-// Puppeteer configuration for different environments
+// Docker-optimized Puppeteer configuration
 const getPuppeteerConfig = () => {
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+  const isDocker = fs.existsSync('/.dockerenv');
+  const isRender = process.env.RENDER || process.env.NODE_ENV === 'production';
   
-  if (isProduction) {
-    console.log('🚀 Using production Puppeteer config for Render');
+  console.log('🐳 Docker detected:', isDocker);
+  console.log('🏗️ Render detected:', isRender);
+  
+  if (isDocker || isRender) {
+    console.log('🚀 Using production Docker config');
     return {
       headless: 'new',
+      executablePath: '/usr/bin/google-chrome-stable', // Chrome path in Docker image
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -52,14 +57,14 @@ const getPuppeteerConfig = () => {
     };
   }
   
-  console.log('💻 Using local Puppeteer config');
+  console.log('💻 Using local development config');
   return { 
     headless: 'new',
     timeout: 30000
   };
 };
 
-// Utilidad: convierte un archivo (png/jpg/svg) a data URI
+// Asset loading with error handling
 const toDataUri = (filePath) => {
   try {
     const ext = path.extname(filePath).toLowerCase();
@@ -72,16 +77,15 @@ const toDataUri = (filePath) => {
     const base64 = data.toString("base64");
     return `data:${mime};base64,${base64}`;
   } catch (error) {
-    console.error(`⚠️ Error loading asset ${filePath}:`, error.message);
-    return ""; // Return empty string if asset not found
+    console.warn(`⚠️ Could not load asset: ${filePath}`);
+    return "";
   }
 };
 
-// Rutas a tus imágenes en ./assets
+// Load assets
 const assetsDir = path.resolve(__dirname, "assets");
 console.log('📁 Assets directory:', assetsDir);
 
-// Carga imágenes una sola vez (with error handling)
 const logoRepsolUri = toDataUri(path.join(assetsDir, "repsol.svg"));
 const iconRepsolUri = toDataUri(path.join(assetsDir, "repsol_icon.jpg"));
 const boltUri = toDataUri(path.join(assetsDir, "bolt.svg"));
@@ -100,10 +104,11 @@ const percentUri = toDataUri(path.join(assetsDir, "percent.svg"));
 const headerUri = toDataUri(path.join(assetsDir, "repsol_header.png"));
 const header2Uri = toDataUri(path.join(assetsDir, "header.svg"));
 
+// Utility functions
 function wattsToKwNumber(watts) {
   const n = Number(String(watts ?? "").replace(",", "."));
   if (!Number.isFinite(n)) return 0;
-  return n / 1000; // 4600 -> 4.6
+  return n / 1000;
 }
 
 function toNum(v) {
@@ -121,20 +126,18 @@ function euro(n) {
   return (t === "—" ? "—" : `${t}€`);
 }
 
-// Plantilla HTML (usa class, no className). Añadimos ".pdf-root" como ancla estable.
+// Complete buildHtml function
 const buildHtml = (data = {}) => {
   const {
     name = "Ejemplo",
     comercial = "",
     tarifa = "",
-    // Fijo/Exclusivo
     consumo = "",
     potencia = "",
     diasFactura = "",
     bonoSocial = "",
     alquilerContador = "",
     otros = "",
-    // Indexado
     consumoP1 = "",
     consumoP2 = "",
     consumoP3 = "",
@@ -144,19 +147,16 @@ const buildHtml = (data = {}) => {
   const potenciaKwText = formatNumberComma(potenciaKwNum, 1);
   const diasNum = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
   
-  // Cálculo del término fijo por periodos
   let importeP1 = 0;
   let importeP2 = 0;
   let totalTerminoFijo = 0;
   const t = String(tarifa || "").trim();
 
   if (t === "Indexado") {
-    // Periodo 1 y 2 con precios distintos
     importeP1 = potenciaKwNum * diasNum * 0.0717;
     importeP2 = potenciaKwNum * diasNum * 0.0031;
     totalTerminoFijo = importeP1 + importeP2;
   } else {
-    // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
     const precioKwDia = 0.0819;
     const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
     importeP1 = importeTerminoFijo;
@@ -172,51 +172,33 @@ const buildHtml = (data = {}) => {
     precioKwDiaTextP2 = "0,0031 €/kW día";
   }
 
-  // Consumos numéricos
   const consumoTotal = toNum(consumo);
   const cP1 = toNum(consumoP1);
   const cP2 = toNum(consumoP2);
   const cP3 = toNum(consumoP3);
 
-  // Precios por kWh
   let priceP1 = 0, priceP2 = 0, priceP3 = 0;
   let kWh1 = 0, kWh2 = 0, kWh3 = 0;
 
   if (t === "Indexado") {
-    kWh1 = cP1;
-    kWh2 = cP2;
-    kWh3 = cP3;
-    priceP1 = 0.154;
-    priceP2 = 0.103;
-    priceP3 = 0.0724;
+    kWh1 = cP1; kWh2 = cP2; kWh3 = cP3;
+    priceP1 = 0.154; priceP2 = 0.103; priceP3 = 0.0724;
   } else if (t === "Exclusivo") {
-    kWh1 = consumoTotal;
-    kWh2 = 0;
-    kWh3 = 0;
-    priceP1 = 0.1099;
-    priceP2 = 0.1099; // no usados
-    priceP3 = 0.1099;
+    kWh1 = consumoTotal; kWh2 = 0; kWh3 = 0;
+    priceP1 = 0.1099; priceP2 = 0.1099; priceP3 = 0.1099;
   } else {
-    // Fijo (por defecto)
-    kWh1 = consumoTotal;
-    kWh2 = 0;
-    kWh3 = 0;
-    priceP1 = 0.1299;
-    priceP2 = 0.1299; // no usados
-    priceP3 = 0.1299;
+    kWh1 = consumoTotal; kWh2 = 0; kWh3 = 0;
+    priceP1 = 0.1299; priceP2 = 0.1299; priceP3 = 0.1299;
   }
 
-  // Importes de energía
   const impP1 = kWh1 * priceP1;
   const impP2 = kWh2 * priceP2;
   const impP3 = kWh3 * priceP3;
   const totalEnergia = impP1 + impP2 + impP3;
 
-  // Textos formateados
   const kWh1Text = `${formatNumberComma(kWh1, 2)} kWh`;
   const kWh2Text = `${formatNumberComma(kWh2, 2)} kWh`;
   const kWh3Text = `${formatNumberComma(kWh3, 2)} kWh`;
-
   const priceP1Text = `${formatNumberComma(priceP1, 4)} €/kWh`;
   const priceP2Text = `${formatNumberComma(priceP2, 4)} €/kWh`;
   const priceP3Text = `${formatNumberComma(priceP3, 4)} €/kWh`;
@@ -224,75 +206,40 @@ const buildHtml = (data = {}) => {
   const diasN = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
   const bonoTotalFront = Number(String(bonoSocial ?? "").replace(",", "."));
   const alquilerTotalFront = Number(String(alquilerContador ?? "").replace(",", "."));
-
   const bonoBaseDia = 0.012742;
   const alquilerBaseDia = 0.02663;
 
   const bonoDia = (Number.isFinite(bonoTotalFront) && bonoTotalFront > 0 && diasN > 0)
-    ? (bonoTotalFront / diasN)
-    : bonoBaseDia;
-
+    ? (bonoTotalFront / diasN) : bonoBaseDia;
   const alquilerDia = (Number.isFinite(alquilerTotalFront) && alquilerTotalFront > 0 && diasN > 0)
-    ? (alquilerTotalFront / diasN)
-    : alquilerBaseDia;
+    ? (alquilerTotalFront / diasN) : alquilerBaseDia;
 
-  // Totales a mostrar en cabecera "Varios"
   const totalBono = bonoDia * diasN;
   const totalAlquiler = alquilerDia * diasN;
   const totalVarios = totalBono + totalAlquiler;
-
-  // Textos formateados
   const bonoDiaText = `${formatNumberComma(bonoDia, 6)} €/día`;
   const alquilerDiaText = `${formatNumberComma(alquilerDia, 5)} €/día`;
-
-  // =====================
-  // Cálculo Impuestos
-  // =====================
-
-  // Base para Impuesto Eléctrico: suma de término fijo + energía
+  
   const baseImpuestoElectrico = (totalTerminoFijo || 0) + (totalEnergia || 0);
-
-  // Tipo de Impuesto Eléctrico (5,11269632%)
   const tipoImpuestoElectrico = 0.0511269632;
-
-  // Importe de Impuesto Eléctrico
   const importeImpuestoElectrico = baseImpuestoElectrico * tipoImpuestoElectrico;
-
-  // Base para IVA: suma de término fijo + energía + varios + impuesto eléctrico
   const baseIVA = baseImpuestoElectrico + (totalVarios || 0) + importeImpuestoElectrico;
-
-  // Tipo de IVA (21%)
   const tipoIVA = 0.21;
-
-  // Importe de IVA
   const importeIVA = baseIVA * tipoIVA;
-
-  // Total de la sección "Impuestos"
   const totalImpuestos = importeImpuestoElectrico + importeIVA;
 
-  // Textos formateados para mostrar
   const baseImpElecText = `${formatNumberComma(baseImpuestoElectrico, 2)} €`;
   const tipoImpElecText = `${formatNumberComma(tipoImpuestoElectrico * 100, 8)} %`;
   const impElecText = euro(importeImpuestoElectrico);
-
   const tipoIVAText = `${formatNumberComma(tipoIVA * 100, 2)} %`;
   const ivaText = euro(importeIVA);
   const totalImpuestosText = euro(totalImpuestos);
-
-  // =====================
-  // TOTAL GENERAL
-  // =====================
+  
   const totalGeneral = (totalEnergia || 0) + (totalTerminoFijo || 0) + (totalVarios || 0) + (totalImpuestos || 0);
   const totalGeneralText = euro(totalGeneral);
-
-  // =====================
-  // ACTUAL y AHORRO
-  // =====================
-  // ACTUAL: exactamente el valor de "otros" que llega del front
+  
   const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
   const actualText = euro(otrosNum);
-
-  // AHORRO: otros - totalGeneral, pero nunca negativo
   const ahorroBruto = otrosNum - (totalGeneral || 0);
   const ahorroNum = Math.max(0, ahorroBruto);
   const ahorroText = euro(ahorroNum);
@@ -304,9 +251,7 @@ const buildHtml = (data = {}) => {
   <meta charset="UTF-8" />
   <title>PDF - ${name}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts: Montserrat -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -656,6 +601,9 @@ app.get("/", (req, res) => {
     status: "Backend running", 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    docker: fs.existsSync('/.dockerenv'),
+    render: !!process.env.RENDER,
+    puppeteerPath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable (Docker)',
     puppeteerVersion: require('puppeteer/package.json').version
   });
 });
@@ -664,11 +612,12 @@ app.get("/health", (req, res) => {
   res.json({ 
     status: "OK", 
     timestamp: new Date().toISOString(),
-    puppeteer: "ready"
+    puppeteer: "ready",
+    docker: fs.existsSync('/.dockerenv')
   });
 });
 
-// Vista HTML para iterar estilos rápido (sin generar PDF)
+// Preview endpoint
 app.get("/preview", (req, res) => {
   const {
     name = "Ejemplo",
@@ -695,7 +644,7 @@ app.get("/preview", (req, res) => {
   return res.status(200).send(html);
 });
 
-// PDF inline (application/pdf en respuesta, sin "attachment")
+// PDF inline endpoint
 app.post("/pdf-inline", async (req, res) => {
   const {
     name, comercial, tarifa,
@@ -759,7 +708,7 @@ app.post("/pdf-inline", async (req, res) => {
   }
 });
 
-// PDF con descarga (attachment)
+// Main PDF endpoint
 app.post("/pdf", async (req, res) => {
   const {
     name, comercial, tarifa,
@@ -788,10 +737,12 @@ app.post("/pdf", async (req, res) => {
   try {
     console.log('=== 📊 PDF Generation Start ===');
     console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
-    console.log('🏗️  Render env:', !!process.env.RENDER);
+    console.log('🐳 Docker env:', fs.existsSync('/.dockerenv'));
+    console.log('🏗️ Render env:', !!process.env.RENDER);
     
     const config = getPuppeteerConfig();
-    console.log('⚙️  Puppeteer config ready');
+    console.log('⚙️ Puppeteer config ready');
+    console.log('🎯 Chrome path:', config.executablePath || 'bundled');
     
     console.log('🚀 Launching browser...');
     browser = await puppeteer.launch(config);
@@ -807,7 +758,7 @@ app.post("/pdf", async (req, res) => {
     console.log('✅ Content set successfully');
     
     await new Promise(r => setTimeout(r, 500));
-    console.log('⏱️  Waiting period completed');
+    console.log('⏱️ Waiting period completed');
     
     const pdfBuffer = await page.pdf({ 
       format: "A4", 
@@ -836,12 +787,36 @@ app.post("/pdf", async (req, res) => {
     console.error("Error stack:", err.stack);
     console.error("Error name:", err.name);
     
+    // Additional debugging for Docker environment
+    if (fs.existsSync('/.dockerenv')) {
+      console.log('🐳 Docker environment detected - checking Chrome installation...');
+      const chromePaths = [
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium'
+      ];
+      
+      chromePaths.forEach(chromePath => {
+        try {
+          if (fs.existsSync(chromePath)) {
+            console.log('✅ Found Chrome at:', chromePath);
+          } else {
+            console.log('❌ Not found:', chromePath);
+          }
+        } catch (e) {
+          console.log('❌ Error checking:', chromePath);
+        }
+      });
+    }
+    
     return res.status(500).json({ 
       error: "No se pudo generar el PDF", 
       details: err.message,
       errorName: err.name,
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || 'development'
+      environment: process.env.NODE_ENV || 'development',
+      docker: fs.existsSync('/.dockerenv')
     });
   } finally {
     if (browser) {
@@ -859,7 +834,9 @@ const port = process.env.PORT || 10000;
 app.listen(port, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${port}`);
   console.log('📁 Environment:', process.env.NODE_ENV || 'development');
-  console.log('🏗️  Render deployment:', !!process.env.RENDER);
+  console.log('🐳 Docker environment:', fs.existsSync('/.dockerenv'));
+  console.log('🏗️ Render deployment:', !!process.env.RENDER);
   console.log('🤖 Puppeteer version:', require('puppeteer/package.json').version);
-  console.log('💡 Assets loaded successfully');
+  console.log('🎯 Chrome executable path: /usr/bin/google-chrome-stable (Docker)');
+  console.log('💡 Assets loaded and ready to generate PDFs!');
 });
