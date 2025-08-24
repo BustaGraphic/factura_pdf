@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": { 
-  "start": "node index.js",
-  "dev": "nodemon index.js",
-  "build": "echo 'Build complete - Node.js backend ready'"
-},
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "npx puppeteer browsers install chrome",
+    "postinstall": "npx puppeteer browsers install chrome"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
