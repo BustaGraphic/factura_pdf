@@ -17,16 +17,9 @@ const launchOptions = {
     '--no-first-run',
     '--no-zygote',
     '--single-process',
-    '--disable-gpu',
-    '--disable-web-security',
-    '--disable-features=VizDisplayCompositor'
-  ],
-  // Try multiple Chrome paths for better compatibility
-  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || 
-                  process.env.GOOGLE_CHROME_BIN || 
-                  '/usr/bin/google-chrome-stable' || 
-                  '/usr/bin/chromium-browser' || 
-                  undefined
+    '--disable-gpu'
+  ]
+  // Don't specify executablePath - let puppeteer use its bundled Chromium
 };
 
 // CORS Configuration
