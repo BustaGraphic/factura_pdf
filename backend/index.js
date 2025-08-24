@@ -7,20 +7,7 @@ const path = require("path");
 const app = express();
 
 
-const launchOptions = {
-  headless: true,
-  args: [
-    '--no-sandbox',
-    '--disable-setuid-sandbox',
-    '--disable-dev-shm-usage',
-    '--disable-accelerated-2d-canvas',
-    '--no-first-run',
-    '--no-zygote',
-    '--single-process',
-    '--disable-gpu'
-  ],
-  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
-};
+
 // En local, el front suele estar en http://localhost:5173
 // En producción cambia el origin a tu dominio de Vercel
 
@@ -653,7 +640,7 @@ app.get("/preview", (req, res) => {
   return res.status(200).send(html);
 });
 
-// PDF inline endpoint - REPLACE your existing one
+// PDF inline (application/pdf en respuesta, sin "attachment")
 app.post("/pdf-inline", async (req, res) => {
   const {
     name, comercial, tarifa,
@@ -678,9 +665,10 @@ app.post("/pdf-inline", async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch(launchOptions); // Use launchOptions here
+    browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
+    // pequeño buffer por si hay cargas externas
     await new Promise(r => setTimeout(r, 120));
     const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
     res.setHeader("Content-Type", "application/pdf");
@@ -688,13 +676,13 @@ app.post("/pdf-inline", async (req, res) => {
     return res.status(200).send(pdfBuffer);
   } catch (e) {
     console.error("Error pdf-inline:", e);
-    return res.status(500).json({ error: "Error generating PDF: " + e.message });
+    return res.status(500).send("Error");
   } finally {
     if (browser) await browser.close();
   }
 });
 
-// PDF download endpoint - REPLACE your existing one
+// PDF con descarga (attachment)
 app.post("/pdf", async (req, res) => {
   const {
     name, comercial, tarifa,
@@ -719,7 +707,7 @@ app.post("/pdf", async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch(launchOptions); // Use launchOptions here
+    browser = await puppeteer.launch();
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
     await new Promise(r => setTimeout(r, 120));
@@ -735,7 +723,7 @@ app.post("/pdf", async (req, res) => {
     return res.status(200).send(pdfBuffer);
   } catch (err) {
     console.error("Error generando PDF:", err);
-    return res.status(500).json({ error: "No se pudo generar el PDF: " + err.message });
+    return res.status(500).json({ error: "No se pudo generar el PDF" });
   } finally {
     if (browser) await browser.close();
   }
