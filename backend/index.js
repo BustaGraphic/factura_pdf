@@ -538,7 +538,9 @@ const ahorroText = euro(ahorroNum);
               
             </div>
           </div>
-
+<div class="flex flex-col  space-y-1.5">
+            
+          </div>
           
 
           <div class="flex flex-col space-y-1.5">
