@@ -6,16 +6,11 @@ const path = require("path");
 
 const app = express();
 
-
-
-// En local, el front suele estar en http://localhost:5173
-// En producción cambia el origin a tu dominio de Vercel
-
-      
+// CORS configuration
 app.use(cors({
   origin: [
     "https://repsol-comparativa.onrender.com", 
-    "https://factura-pdf.vercel.app",  // Add your Vercel frontend
+    "https://factura-pdf.vercel.app",
     "http://localhost:3000",
     "http://localhost:5173",
   ],
@@ -23,28 +18,70 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
-       
-// ...rutas después
 
 app.use(express.json({ limit: "2mb" }));
 
+// Puppeteer configuration for different environments
+const getPuppeteerConfig = () => {
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+  
+  if (isProduction) {
+    console.log('🚀 Using production Puppeteer config for Render');
+    return {
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--memory-pressure-off',
+        '--max_old_space_size=4096'
+      ],
+      timeout: 60000
+    };
+  }
+  
+  console.log('💻 Using local Puppeteer config');
+  return { 
+    headless: 'new',
+    timeout: 30000
+  };
+};
+
 // Utilidad: convierte un archivo (png/jpg/svg) a data URI
 const toDataUri = (filePath) => {
-  const ext = path.extname(filePath).toLowerCase();
-  const mime =
-    ext === ".png" ? "image/png" :
-      ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" :
-        ext === ".svg" ? "image/svg+xml" :
-          "application/octet-stream";
-  const data = fs.readFileSync(filePath);
-  const base64 = data.toString("base64");
-  return `data:${mime};base64,${base64}`;
+  try {
+    const ext = path.extname(filePath).toLowerCase();
+    const mime =
+      ext === ".png" ? "image/png" :
+        ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" :
+          ext === ".svg" ? "image/svg+xml" :
+            "application/octet-stream";
+    const data = fs.readFileSync(filePath);
+    const base64 = data.toString("base64");
+    return `data:${mime};base64,${base64}`;
+  } catch (error) {
+    console.error(`⚠️ Error loading asset ${filePath}:`, error.message);
+    return ""; // Return empty string if asset not found
+  }
 };
 
 // Rutas a tus imágenes en ./assets
 const assetsDir = path.resolve(__dirname, "assets");
+console.log('📁 Assets directory:', assetsDir);
 
-// Carga imágenes una sola vez
+// Carga imágenes una sola vez (with error handling)
 const logoRepsolUri = toDataUri(path.join(assetsDir, "repsol.svg"));
 const iconRepsolUri = toDataUri(path.join(assetsDir, "repsol_icon.jpg"));
 const boltUri = toDataUri(path.join(assetsDir, "bolt.svg"));
@@ -57,24 +94,23 @@ const savingsUri = toDataUri(path.join(assetsDir, "savings.svg"));
 const savings2Uri = toDataUri(path.join(assetsDir, "economia-y-finanzas_hucha.svg"));
 const oregonUri = toDataUri(path.join(assetsDir, "oregon.svg"));
 const callUri = toDataUri(path.join(assetsDir, "call.svg"));
-
 const userUri = toDataUri(path.join(assetsDir, "user.svg"));
-
 const mailUri = toDataUri(path.join(assetsDir, "mail.svg"));
-
 const percentUri = toDataUri(path.join(assetsDir, "percent.svg"));
 const headerUri = toDataUri(path.join(assetsDir, "repsol_header.png"));
-const header2Uri = toDataUri(path.join(assetsDir, "header.svg")); // si no la usas, puedes quitarla
+const header2Uri = toDataUri(path.join(assetsDir, "header.svg"));
 
 function wattsToKwNumber(watts) {
   const n = Number(String(watts ?? "").replace(",", "."));
   if (!Number.isFinite(n)) return 0;
   return n / 1000; // 4600 -> 4.6
 }
+
 function toNum(v) {
   const n = Number(String(v ?? "").replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
+
 function formatNumberComma(n, dec = 2) {
   if (!Number.isFinite(n)) return "—";
   return n.toFixed(dec).replace(".", ",");
@@ -85,14 +121,12 @@ function euro(n) {
   return (t === "—" ? "—" : `${t}€`);
 }
 
-
 // Plantilla HTML (usa class, no className). Añadimos ".pdf-root" como ancla estable.
 const buildHtml = (data = {}) => {
   const {
     name = "Ejemplo",
     comercial = "",
     tarifa = "",
-
     // Fijo/Exclusivo
     consumo = "",
     potencia = "",
@@ -100,42 +134,44 @@ const buildHtml = (data = {}) => {
     bonoSocial = "",
     alquilerContador = "",
     otros = "",
-
     // Indexado
     consumoP1 = "",
     consumoP2 = "",
     consumoP3 = "",
   } = data;
-  const potenciaKwNum = wattsToKwNumber(potencia);            // 4.6 para 4600W
-  const potenciaKwText = formatNumberComma(potenciaKwNum, 1); // "4,6"
+  
+  const potenciaKwNum = wattsToKwNumber(potencia);
+  const potenciaKwText = formatNumberComma(potenciaKwNum, 1);
   const diasNum = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
- // Cálculo del término fijo por periodos
-let importeP1 = 0;
-let importeP2 = 0;
-let totalTerminoFijo = 0;
+  
+  // Cálculo del término fijo por periodos
+  let importeP1 = 0;
+  let importeP2 = 0;
+  let totalTerminoFijo = 0;
   const t = String(tarifa || "").trim();
 
-if (t === "Indexado") {
-  // Periodo 1 y 2 con precios distintos
-  importeP1 = potenciaKwNum * diasNum * 0.0717;
-  importeP2 = potenciaKwNum * diasNum * 0.0031;
-  totalTerminoFijo = importeP1 + importeP2;
-} else {
-  // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
-  const precioKwDia = 0.0819;
-  const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
-  importeP1 = importeTerminoFijo;
-  importeP2 = importeTerminoFijo;
-  totalTerminoFijo = importeP1 + importeP2;
-}
+  if (t === "Indexado") {
+    // Periodo 1 y 2 con precios distintos
+    importeP1 = potenciaKwNum * diasNum * 0.0717;
+    importeP2 = potenciaKwNum * diasNum * 0.0031;
+    totalTerminoFijo = importeP1 + importeP2;
+  } else {
+    // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
+    const precioKwDia = 0.0819;
+    const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
+    importeP1 = importeTerminoFijo;
+    importeP2 = importeTerminoFijo;
+    totalTerminoFijo = importeP1 + importeP2;
+  }
 
-let precioKwDiaTextP1 = "0,0819 €/kW día";
-let precioKwDiaTextP2 = "0,0819 €/kW día";
+  let precioKwDiaTextP1 = "0,0819 €/kW día";
+  let precioKwDiaTextP2 = "0,0819 €/kW día";
 
-if (t === "Indexado") {
-  precioKwDiaTextP1 = "0,0717 €/kW día";
-  precioKwDiaTextP2 = "0,0031 €/kW día";
-}
+  if (t === "Indexado") {
+    precioKwDiaTextP1 = "0,0717 €/kW día";
+    precioKwDiaTextP2 = "0,0031 €/kW día";
+  }
+
   // Consumos numéricos
   const consumoTotal = toNum(consumo);
   const cP1 = toNum(consumoP1);
@@ -184,6 +220,7 @@ if (t === "Indexado") {
   const priceP1Text = `${formatNumberComma(priceP1, 4)} €/kWh`;
   const priceP2Text = `${formatNumberComma(priceP2, 4)} €/kWh`;
   const priceP3Text = `${formatNumberComma(priceP3, 4)} €/kWh`;
+  
   const diasN = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
   const bonoTotalFront = Number(String(bonoSocial ?? "").replace(",", "."));
   const alquilerTotalFront = Number(String(alquilerContador ?? "").replace(",", "."));
@@ -206,7 +243,8 @@ if (t === "Indexado") {
 
   // Textos formateados
   const bonoDiaText = `${formatNumberComma(bonoDia, 6)} €/día`;
-  const alquilerDiaText = `${formatNumberComma(alquilerDia, 5)} €/día`; // ajusta decimales si quieres
+  const alquilerDiaText = `${formatNumberComma(alquilerDia, 5)} €/día`;
+
   // =====================
   // Cálculo Impuestos
   // =====================
@@ -240,42 +278,58 @@ if (t === "Indexado") {
   const tipoIVAText = `${formatNumberComma(tipoIVA * 100, 2)} %`;
   const ivaText = euro(importeIVA);
   const totalImpuestosText = euro(totalImpuestos);
+
   // =====================
   // TOTAL GENERAL
   // =====================
   const totalGeneral = (totalEnergia || 0) + (totalTerminoFijo || 0) + (totalVarios || 0) + (totalImpuestos || 0);
   const totalGeneralText = euro(totalGeneral);
+
   // =====================
   // ACTUAL y AHORRO
   // =====================
- // ACTUAL: exactamente el valor de "otros" que llega del front
-const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
-const actualText = euro(otrosNum);
+  // ACTUAL: exactamente el valor de "otros" que llega del front
+  const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
+  const actualText = euro(otrosNum);
 
-// AHORRO: otros - totalGeneral, pero nunca negativo
-const ahorroBruto = otrosNum - (totalGeneral || 0);
-const ahorroNum = Math.max(0, ahorroBruto);
-const ahorroText = euro(ahorroNum);
-
+  // AHORRO: otros - totalGeneral, pero nunca negativo
+  const ahorroBruto = otrosNum - (totalGeneral || 0);
+  const ahorroNum = Math.max(0, ahorroBruto);
+  const ahorroText = euro(ahorroNum);
 
   return `
 <!DOCTYPE html>
 <html lang="es">
-<head> <meta charset="UTF-8" /> <title>PDF - ${name}</title> <meta name="viewport" content="width=device-width, initial-scale=1" /> <!-- Tailwind CDN --> <script src="https://cdn.tailwindcss.com"></script> <!-- Google Fonts: Montserrat --> <link rel="preconnect" href="https://fonts.googleapis.com"> <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet"> <style> @page { margin: 0mm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; } img { display:block; } </style> </head>
+<head>
+  <meta charset="UTF-8" />
+  <title>PDF - ${name}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { margin: 0mm; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-family: 'Montserrat', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    img { display:block; }
+  </style>
+</head>
 <body class="min-h-screen bg-white">
-  <div class="pdf-root flex justify-center  ">
-    <div class="py-2.5 px-3.5 grid gap-4  w-full">
+  <div class="pdf-root flex justify-center">
+    <div class="py-2.5 px-3.5 grid gap-4 w-full">
 
       <!-- Cabecera -->
       <div class="bg-[#F8EEE4] h-[90px] flex items-center overflow-hidden justify-between rounded-[20px]">
         <div class="ml-[40px] flex items-center w-auto space-x-[32px] rounded-xl">
-          <img src="${logoRepsolUri}" alt="Logo" class=" translate-y-[2px] h-8 mr-1 " />
+          <img src="${logoRepsolUri}" alt="Logo" class="translate-y-[2px] h-8 mr-1" />
           <div class="h-7 w-[2px] bg-[#011E37] rounded-full"></div>
           <div class="text-base text-[#011E37] font-medium">
             Comparativa Repsol
           </div>
         </div>
-         <img src="${iconRepsolUri}" alt="Logo" class=" translate-x-[70px] translate-y-[6px] rotate-6 h-44  " />
+        <img src="${iconRepsolUri}" alt="Logo" class="translate-x-[70px] translate-y-[6px] rotate-6 h-44" />
       </div>
 
       <!-- Bloque: título + cabeceras de tabla -->
@@ -296,11 +350,11 @@ const ahorroText = euro(ahorroNum);
         <!-- Fila Término fijo -->
         <div class="text-[12px] font-medium py-3 -mt-[2px] text-[#011E37] px-4 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_1fr_1fr] gap-x-3.5 gap-y-2">
           <div class="col-span-3 flex justify-between py-1 px-1.5 rounded-md bg-[#FFEBCC] w-[calc((100%-2*8px)/3+5px)] -ml-[4px] -mr-[4px] justify-self-start">
-            <div class="flex items-center space-x-1 font-semibold ">
+            <div class="flex items-center space-x-1 font-semibold">
               <img src="${boltUri}" alt="Logo" class="h-4 w-4" />
-              <div >Término fijo</div>
+              <div>Término fijo</div>
             </div>
-<div class="font-semibold">${euro(totalTerminoFijo)}</div>
+            <div class="font-semibold">${euro(totalTerminoFijo)}</div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
@@ -319,20 +373,19 @@ const ahorroText = euro(ahorroNum);
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between w-full">
-  <div>${potenciaKwText} kW</div>
-  <div>×</div>
-  <div>${diasFactura} días</div>
-  <div>×</div>
-<div>${precioKwDiaTextP1}</div>
-</div>
-<div class="flex justify-between w-full">
-  <div>${potenciaKwText} kW</div>
-  <div>×</div>
-  <div>${diasFactura} días</div>
-  <div>×</div>
-<div>${precioKwDiaTextP2}</div>
-</div>
-
+                <div>${potenciaKwText} kW</div>
+                <div>×</div>
+                <div>${diasFactura} días</div>
+                <div>×</div>
+                <div>${precioKwDiaTextP1}</div>
+              </div>
+              <div class="flex justify-between w-full">
+                <div>${potenciaKwText} kW</div>
+                <div>×</div>
+                <div>${diasFactura} días</div>
+                <div>×</div>
+                <div>${precioKwDiaTextP2}</div>
+              </div>
             </div>
           </div>
 
@@ -352,43 +405,42 @@ const ahorroText = euro(ahorroNum);
               <img src="${bombillaUri}" alt="Logo" class="h-4 w-4" />
               <div>Energía</div>
             </div>
-<div class="font-semibold">${euro(totalEnergia)}</div>
+            <div class="font-semibold">${euro(totalEnergia)}</div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
                 <div>Consumo (P1)</div>
-<div>${euro(impP1)}</div>
+                <div>${euro(impP1)}</div>
               </div>
               <div class="flex justify-between">
                 <div>Consumo (P2)</div>
-<div>${euro(impP2)}</div>
+                <div>${euro(impP2)}</div>
               </div>
               <div class="flex justify-between">
                 <div>Consumo (P3)</div>
-<div>${euro(impP3)}</div>
+                <div>${euro(impP3)}</div>
               </div>
             </div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
-           <div class="flex space-x-1 w-full justify-end">
-  <div>${kWh1Text}</div>
-  <div>×</div>
-  <div>${priceP1Text}</div>
-</div>
-<div class="flex space-x-1 w-full justify-end">
-  <div>${kWh2Text}</div>
-  <div>×</div>
-  <div>${priceP2Text}</div>
-</div>
-<div class="flex space-x-1 w-full justify-end">
-  <div>${kWh3Text}</div>
-  <div>×</div>
-  <div>${priceP3Text}</div>
-</div>
-
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${kWh1Text}</div>
+              <div>×</div>
+              <div>${priceP1Text}</div>
+            </div>
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${kWh2Text}</div>
+              <div>×</div>
+              <div>${priceP2Text}</div>
+            </div>
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${kWh3Text}</div>
+              <div>×</div>
+              <div>${priceP3Text}</div>
+            </div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
@@ -398,46 +450,42 @@ const ahorroText = euro(ahorroNum);
               </div>
             </div>
           </div>
-
         </div>
+
+        <!-- Fila Varios -->
         <div class="text-[12px] font-medium py-3 -mt-[2px] text-[#011E37] px-4 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_1fr_1fr] gap-x-3.5 gap-y-2">
           <div class="col-span-3 flex justify-between py-1 px-1.5 rounded-md bg-[#DAF5FB] w-[calc((100%-2*8px)/3+5px)] -ml-[4px] -mr-[4px] justify-self-start">
             <div class="flex items-center space-x-1 font-semibold">
               <img src="${addUri}" alt="Logo" class="h-4 w-4" />
               <div>Varios</div>
             </div>
-<div class="font-semibold">${euro(totalVarios)}</div>
+            <div class="font-semibold">${euro(totalVarios)}</div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
                 <div>Financiación del Bono Social</div>
-<div>${euro(totalBono)}</div>
-
+                <div>${euro(totalBono)}</div>
               </div>
               <div class="flex justify-between">
-                <div>  Alquiler del contador </div>
-<div>${euro(totalAlquiler)}</div>
-
+                <div>Alquiler del contador</div>
+                <div>${euro(totalAlquiler)}</div>
               </div>
-              
             </div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-x-1 w-full justify-end">
-  <div>${diasFactura} días</div>
-  <div>×</div>
-  <div>${bonoDiaText}</div>
-</div>
-<div class="flex space-x-1 w-full justify-end">
-  <div>${diasFactura} días</div>
-  <div>×</div>
-  <div>${alquilerDiaText}</div>
-</div>
-
-           
+              <div>${diasFactura} días</div>
+              <div>×</div>
+              <div>${bonoDiaText}</div>
+            </div>
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${diasFactura} días</div>
+              <div>×</div>
+              <div>${alquilerDiaText}</div>
+            </div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
@@ -447,46 +495,42 @@ const ahorroText = euro(ahorroNum);
               </div>
             </div>
           </div>
-
         </div>
+
+        <!-- Fila Impuestos -->
         <div class="text-[12px] font-medium py-3 -mt-[2px] text-[#011E37] px-4 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_1fr_1fr] gap-x-3.5 gap-y-2">
           <div class="col-span-3 flex justify-between py-1 px-1.5 rounded-md bg-[#DAF5FB] w-[calc((100%-2*8px)/3+5px)] -ml-[4px] -mr-[4px] justify-self-start">
             <div class="flex items-center space-x-1 font-semibold">
               <img src="${percentUri}" alt="Logo" class="h-4 w-4" />
               <div>Impuestos</div>
             </div>
-<div class="font-semibold">${totalImpuestosText}</div>
+            <div class="font-semibold">${totalImpuestosText}</div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
-               <div>Impuesto Eléctrico</div>
-<div>${impElecText}</div>
-
+                <div>Impuesto Eléctrico</div>
+                <div>${impElecText}</div>
               </div>
               <div class="flex justify-between">
                 <div>IVA (21%)</div>
-<div>${ivaText}</div>
-
+                <div>${ivaText}</div>
               </div>
-             
             </div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
-<div class="flex space-x-1 w-full justify-end">
-  <div>${baseImpElecText}</div>
-  <div>×</div>
-  <div>${tipoImpElecText}</div>
-</div>
-<div class="flex space-x-1 w-full justify-end">
-  <div>${formatNumberComma(baseIVA, 2)} €</div>
-  <div>×</div>
-  <div>${tipoIVAText}</div>
-</div>
-
-            
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${baseImpElecText}</div>
+              <div>×</div>
+              <div>${tipoImpElecText}</div>
+            </div>
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${formatNumberComma(baseIVA, 2)} €</div>
+              <div>×</div>
+              <div>${tipoIVAText}</div>
+            </div>
           </div>
 
           <div class="flex flex-col space-y-1.5">
@@ -496,86 +540,80 @@ const ahorroText = euro(ahorroNum);
               </div>
             </div>
           </div>
-
         </div>
         
-        <div class="text-[12px] rounded-b-[20px] font-medium py-3 -mt-[2px] text-[#011E37] px-3 border-[2px] border-[#DBE6F0] flex justify-between gap-[8px] my-2 ">
+        <!-- Total Row -->
+        <div class="text-[12px] rounded-b-[20px] font-medium py-3 -mt-[2px] text-[#011E37] px-3 border-[2px] border-[#DBE6F0] flex justify-between gap-[8px] my-2">
           <div class="flex justify-between py-1 px-1.5 rounded-md bg-[#DBE6F0] basis-[33%] shrink-0 grow-0">
             <div class="flex items-center space-x-1 font-semibold">
               <img src="${approveUri}" alt="Logo" class="h-4 w-4" />
               <div>TOTAL</div>
             </div>
-<div class="font-semibold">${totalGeneralText}</div>
+            <div class="font-semibold">${totalGeneralText}</div>
           </div>
-<div class="flex justify-between py-1 px-1.5 rounded-md bg-[#DBE6F0] flex-1 min-w-0">
+          <div class="flex justify-between py-1 px-1.5 rounded-md bg-[#DBE6F0] flex-1 min-w-0">
             <div class="flex items-center space-x-1 font-semibold">
               <img src="${actualUri}" alt="Logo" class="h-4 w-4" />
               <div>ACTUAL</div>
             </div>
-<div class="font-semibold">${actualText}</div>
+            <div class="font-semibold">${actualText}</div>
           </div>
           <div class="flex justify-between py-1 px-1.5 rounded-md bg-[#DBE6F0] flex-1 min-w-0">
             <div class="flex items-center space-x-1 font-semibold">
               <img src="${savingsUri}" alt="Logo" class="h-4 w-4" />
               <div>AHORRO</div>
             </div>
-<div class="font-semibold">${ahorroText}</div>
+            <div class="font-semibold">${ahorroText}</div>
           </div>
-          
-
         </div>
       </div>
-<div class="text-[12px] font-medium -mt-[8px]  py-3 rounded-[20px]  text-[#011E37] px-4 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_1fr_1fr] gap-x-3.5 gap-y-2">
-          <div class="col-span-3 flex justify-between py-1 px-1.5 rounded-md bg-[#D3F3DB] w-[calc((100%-2*8px)/3+5px)] -ml-[4px] -mr-[4px] justify-self-start">
-            <div class="flex items-center space-x-1 font-semibold">
-              <img src="${moneyUri}" alt="Logo" class="h-4 w-4" />
-              <div>Beneficios</div>
-            </div>
-          </div>
 
-          <div class="flex flex-col space-y-1.5">
-            <div class="flex flex-col space-y-1">
-              <div class="flex justify-between">
-                <div>Gasolina</div>
-                <div>15c€/L</div>
-              </div>
-              
-              <div class="flex justify-between">
-                <div>Tarjeta Regalo</div>
-                <div>80€</div>
-              </div>
-              <div class="flex justify-between">
-                <div>Recarga electrica</div>
-                <div>75%</div>
-              </div>
-             
-              
-            </div>
+      <!-- Beneficios Section -->
+      <div class="text-[12px] font-medium -mt-[8px] py-3 rounded-[20px] text-[#011E37] px-4 border-[2px] border-[#DBE6F0] grid grid-cols-[1fr_1fr_1fr] gap-x-3.5 gap-y-2">
+        <div class="col-span-3 flex justify-between py-1 px-1.5 rounded-md bg-[#D3F3DB] w-[calc((100%-2*8px)/3+5px)] -ml-[4px] -mr-[4px] justify-self-start">
+          <div class="flex items-center space-x-1 font-semibold">
+            <img src="${moneyUri}" alt="Logo" class="h-4 w-4" />
+            <div>Beneficios</div>
           </div>
-<div class="flex flex-col  space-y-1.5">
-            
-          </div>
-          
-
-          <div class="flex flex-col space-y-1.5">
-            <div class="flex space-y-1 h-full items-start">
-              <div class="flex justify-between text-[10px]">
-                Aquí tienes otros importes a tu favor que has
-                conseguido por estar en Repsol, como cashbacks
-                de Waylet, ahorro en la gasolina, en recargas eléctricas en las vías públicas y tarjetas regaló.
-              </div>
-            </div>
-          </div>
-
         </div>
-        <div class="text-[12px] font-medium     text-[#011E37]   grid grid-cols-7 gap-x-3.5 gap-y-2">
-         <div class="bg-[#DBE6F0] rounded-[20px] w-full col-span-3 py-4 px-4 space-y-1.5">
-         
+
+        <div class="flex flex-col space-y-1.5">
+          <div class="flex flex-col space-y-1">
+            <div class="flex justify-between">
+              <div>Gasolina</div>
+              <div>15c€/L</div>
+            </div>
+            <div class="flex justify-between">
+              <div>Tarjeta Regalo</div>
+              <div>80€</div>
+            </div>
+            <div class="flex justify-between">
+              <div>Recarga eléctrica</div>
+              <div>75%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col space-y-1.5">
+        </div>
+
+        <div class="flex flex-col space-y-1.5">
+          <div class="flex space-y-1 h-full items-start">
+            <div class="flex justify-between text-[10px]">
+              Aquí tienes otros importes a tu favor que has conseguido por estar en Repsol, como cashbacks de Waylet, ahorro en la gasolina, en recargas eléctricas en las vías públicas y tarjetas regalo.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer Section -->
+      <div class="text-[12px] font-medium text-[#011E37] grid grid-cols-7 gap-x-3.5 gap-y-2">
+        <div class="bg-[#DBE6F0] rounded-[20px] w-full col-span-3 py-4 px-4 space-y-1.5">
           <div class="gap-1">
             <div class="text-[12px]">Comercial</div>
             <div class="flex items-center gap-1">
               <img src="${userUri}" alt="Logo" class="h-4 w-4" />
-              <div class="font-semibold text-sm">${comercial} </div>
+              <div class="font-semibold text-sm">${comercial}</div>
             </div>
           </div>
           <div class="gap-1">
@@ -592,26 +630,43 @@ const ahorroText = euro(ahorroNum);
               <div class="font-semibold text-sm">643602308</div>
             </div>
           </div>
-         
         </div>
-            <div class=" border-[2px] border-[#DBE6F0] w-full rounded-[20px] col-span-4 flex  py-3 px-4">
-                  <div>
-                      <div class="text-[16px] font-semibold">
-                      ${name} 
-                      </div>
-                      <div class="text-[14px] font-medium">
-                      Comparativa a fecha 12/07/2025, en base a los consumos de la factura el plan más recomendado es el Plan Fijo las 24h con el cual obtienes un ahorro estimado de 500,34€
-                      </div>
-                  
-                  </div>
-                  <img src="${savings2Uri}" alt="Logo" class="h-32 w-auto" />
+        
+        <div class="border-[2px] border-[#DBE6F0] w-full rounded-[20px] col-span-4 flex py-3 px-4">
+          <div>
+            <div class="text-[16px] font-semibold">
+              ${name}
             </div>
+            <div class="text-[14px] font-medium">
+              Comparativa a fecha 12/07/2025, en base a los consumos de la factura el plan más recomendado es el Plan Fijo las 24h con el cual obtienes un ahorro estimado de 500,34€
+            </div>
+          </div>
+          <img src="${savings2Uri}" alt="Logo" class="h-32 w-auto" />
+        </div>
       </div>
     </div>
   </div>
 </body>
-</html>
-`};
+</html>`;
+};
+
+// Health check endpoints
+app.get("/", (req, res) => {
+  res.json({ 
+    status: "Backend running", 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    puppeteerVersion: require('puppeteer/package.json').version
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    puppeteer: "ready"
+  });
+});
 
 // Vista HTML para iterar estilos rápido (sin generar PDF)
 app.get("/preview", (req, res) => {
@@ -665,20 +720,42 @@ app.post("/pdf-inline", async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch();
+    console.log('📄 Starting PDF generation (inline)...');
+    const config = getPuppeteerConfig();
+    
+    browser = await puppeteer.launch(config);
+    console.log('✅ Browser launched successfully');
+    
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    // pequeño buffer por si hay cargas externas
-    await new Promise(r => setTimeout(r, 120));
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
+    await new Promise(r => setTimeout(r, 200));
+    
+    const pdfBuffer = await page.pdf({ 
+      format: "A4", 
+      printBackground: true,
+      timeout: 30000
+    });
+    
+    console.log('✅ PDF generated successfully, size:', pdfBuffer.length);
+    
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Cache-Control", "no-store");
     return res.status(200).send(pdfBuffer);
   } catch (e) {
-    console.error("Error pdf-inline:", e);
-    return res.status(500).send("Error");
+    console.error("❌ Error pdf-inline:", e);
+    return res.status(500).json({ 
+      error: "Error generando PDF inline", 
+      details: e.message,
+      timestamp: new Date().toISOString()
+    });
   } finally {
-    if (browser) await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error('Error closing browser:', closeErr);
+      }
+    }
   }
 });
 
@@ -689,6 +766,8 @@ app.post("/pdf", async (req, res) => {
     consumo, potencia, diasFactura, bonoSocial, alquilerContador, otros,
     consumoP1, consumoP2, consumoP3,
   } = req.body || {};
+
+  console.log('📋 PDF Request received:', { name, comercial, tarifa });
 
   const html = buildHtml({
     name: name || "Sin nombre",
@@ -707,11 +786,38 @@ app.post("/pdf", async (req, res) => {
 
   let browser;
   try {
-    browser = await puppeteer.launch();
+    console.log('=== 📊 PDF Generation Start ===');
+    console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+    console.log('🏗️  Render env:', !!process.env.RENDER);
+    
+    const config = getPuppeteerConfig();
+    console.log('⚙️  Puppeteer config ready');
+    
+    console.log('🚀 Launching browser...');
+    browser = await puppeteer.launch(config);
+    console.log('✅ Browser launched successfully');
+    
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    await new Promise(r => setTimeout(r, 120));
-    const pdfBuffer = await page.pdf({ format: "A4", printBackground: true });
+    console.log('📄 New page created');
+    
+    await page.setContent(html, { 
+      waitUntil: "networkidle0", 
+      timeout: 60000 
+    });
+    console.log('✅ Content set successfully');
+    
+    await new Promise(r => setTimeout(r, 500));
+    console.log('⏱️  Waiting period completed');
+    
+    const pdfBuffer = await page.pdf({ 
+      format: "A4", 
+      printBackground: true,
+      timeout: 60000,
+      preferCSSPageSize: false,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' }
+    });
+    
+    console.log('🎉 PDF generated successfully, size:', pdfBuffer.length, 'bytes');
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -720,16 +826,40 @@ app.post("/pdf", async (req, res) => {
         .toString()
         .replace(/[^\w\d-_]/g, "_")}.pdf"`
     );
+    
+    console.log('=== ✅ PDF Generation Complete ===');
     return res.status(200).send(pdfBuffer);
+    
   } catch (err) {
-    console.error("Error generando PDF:", err);
-    return res.status(500).json({ error: "No se pudo generar el PDF" });
+    console.error("=== ❌ PDF Generation Error ===");
+    console.error("Error message:", err.message);
+    console.error("Error stack:", err.stack);
+    console.error("Error name:", err.name);
+    
+    return res.status(500).json({ 
+      error: "No se pudo generar el PDF", 
+      details: err.message,
+      errorName: err.name,
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
   } finally {
-    if (browser) await browser.close();
+    if (browser) {
+      try {
+        await browser.close();
+        console.log('🔒 Browser closed successfully');
+      } catch (closeErr) {
+        console.error('Error closing browser:', closeErr);
+      }
+    }
   }
 });
 
-const port = process.env.PORT || 10000
+const port = process.env.PORT || 10000;
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running on port ${port}`)
-})
+  console.log(`🚀 Server running on port ${port}`);
+  console.log('📁 Environment:', process.env.NODE_ENV || 'development');
+  console.log('🏗️  Render deployment:', !!process.env.RENDER);
+  console.log('🤖 Puppeteer version:', require('puppeteer/package.json').version);
+  console.log('💡 Assets loaded successfully');
+});
