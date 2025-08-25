@@ -244,7 +244,28 @@ const buildHtml = (data = {}) => {
   const ahorroNum = Math.max(0, ahorroBruto);
   const ahorroText = euro(ahorroNum);
 
-  return `
+    // --- en buildHtml --- //
+
+  // Calcular plan según tarifa
+  let planName = "Plan Fijo las 24h";
+  if (t === "Exclusivo") {
+    planName = "Plan Exclusivo las 24h";
+  } else if (t === "Indexado") {
+    planName = "Plan Indexado";
+  }
+
+  // Calcular ahorro estimado anual
+  const ahorroAnual = ahorroNum * 12;
+  const ahorroAnualText = euro(ahorroAnual);
+
+  // Fecha actual
+  const today = new Date();
+  const fechaHoy = today.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -583,8 +604,8 @@ const buildHtml = (data = {}) => {
               ${name}
             </div>
             <div class="text-[14px] font-medium">
-              Comparativa a fecha 12/07/2025, en base a los consumos de la factura el plan más recomendado es el Plan Fijo las 24h con el cual obtienes un ahorro estimado de 500,34€
-            </div>
+  Comparativa a fecha ${fechaHoy}, en base a los consumos de la factura el plan más recomendado es el ${planName} con el cual obtienes un ahorro estimado de ${ahorroAnualText}
+</div>
           </div>
           <img src="${savings2Uri}" alt="Logo" class="h-32 w-auto" />
         </div>
