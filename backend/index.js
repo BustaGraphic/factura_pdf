@@ -243,6 +243,39 @@ const buildHtml = (data = {}) => {
   const ahorroBruto = otrosNum - (totalGeneral || 0);
   const ahorroNum = Math.max(0, ahorroBruto);
   const ahorroText = euro(ahorroNum);
+// --- dentro de buildHtml antes del return --- //
+
+// Datos de comerciales
+const comercialesInfo = {
+  "Dani": {
+    nombre: "Danilo Bustamante",
+    email: "dbustamanterepsol@gmail.com",
+    telefono: "643602308"
+  },
+  "Noah": {
+    nombre: "Noah Nieto",
+    email: "noahnietorodriguez@gmail.com",
+    telefono: "644950652"
+  },
+  "Juan": {
+    nombre: "Juan José Martínez",
+    email: "juanjorepsol@gmail.com",
+    telefono: "640030356"
+  },
+  "Xexu": {
+    nombre: "Vicentiu",
+    email: "ilr.xexuluis@gmail.com",
+    telefono: "633181109"
+  }
+};
+
+// Si el valor coincide, usamos la info del mapa, sino valores genéricos
+const comercialInfo = comercialesInfo[comercial] || {
+  nombre: comercial || "—",
+  email: "",
+  telefono: ""
+};
+
 
     // --- en buildHtml --- //
 
@@ -575,29 +608,29 @@ return `
       <!-- Footer Section -->
       <div class="text-[12px] font-medium text-[#011E37] grid grid-cols-7 gap-x-3.5 gap-y-2">
         <div class="bg-[#DBE6F0] rounded-[20px] w-full col-span-3 py-4 px-4 space-y-1.5">
-          <div class="gap-1">
-            <div class="text-[12px]">Comercial</div>
-            <div class="flex items-center gap-1">
-              <img src="${userUri}" alt="Logo" class="h-4 w-4" />
-              <div class="font-semibold text-sm">${comercial}</div>
-            </div>
-          </div>
-          <div class="gap-1">
-            <div class="text-[12px]">Email</div>
-            <div class="flex items-center gap-1">
-              <img src="${mailUri}" alt="Logo" class="h-4 w-4" />
-              <div class="font-semibold text-sm">dbustamanterepsol@gmail.com</div>
-            </div>
-          </div>
-          <div class="gap-1">
-            <div class="text-[12px]">Contacto</div>
-            <div class="flex items-center gap-1">
-              <img src="${callUri}" alt="Logo" class="h-4 w-4" />
-              <div class="font-semibold text-sm">643602308</div>
-            </div>
-          </div>
-        </div>
-        
+  <div class="gap-1">
+    <div class="text-[12px]">Comercial</div>
+    <div class="flex items-center gap-1">
+      <img src="${userUri}" alt="Logo" class="h-4 w-4" />
+      <div class="font-semibold text-sm">${comercialInfo.nombre}</div>
+    </div>
+  </div>
+  <div class="gap-1">
+    <div class="text-[12px]">Email</div>
+    <div class="flex items-center gap-1">
+      <img src="${mailUri}" alt="Logo" class="h-4 w-4" />
+      <div class="font-semibold text-sm">${comercialInfo.email}</div>
+    </div>
+  </div>
+  <div class="gap-1">
+    <div class="text-[12px]">Contacto</div>
+    <div class="flex items-center gap-1">
+      <img src="${callUri}" alt="Logo" class="h-4 w-4" />
+      <div class="font-semibold text-sm">${comercialInfo.telefono}</div>
+    </div>
+  </div>
+</div>
+ 
         <div class="border-[2px] border-[#DBE6F0] w-full rounded-[20px] col-span-4 flex py-3 px-4">
           <div>
             <div class="text-[16px] font-semibold">
