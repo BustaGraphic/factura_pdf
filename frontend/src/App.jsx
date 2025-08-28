@@ -252,7 +252,7 @@ const BACKEND = "https://factura-pdf-1.onrender.com";
               Consumo
             </div>
             <div className="relative w-full flex justify-center">
-              <input type="text" value={consumo} onChange={(e) => setConsumo(e.target.value)} className="w-full max-w-80 appearance-none  bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none " />
+              <input  type="text" value={consumo} onChange={(e) => setConsumo(e.target.value)} className="w-full max-w-80 appearance-none  bg-[#F0F5F8] border-2 border-[#DBE6F0] rounded-lg py-1.5 px-2 font-medium outline-none " />
               <div className="absolute inset-y-0 right-2 flex items-center text-[#43637D] pointer-events-none">
                 kW
               </div>
@@ -343,9 +343,18 @@ const BACKEND = "https://factura-pdf-1.onrender.com";
 
 
           </div>
-          <button onClick={handleDownload} className="w-full max-w-80 bg-[#FC9F36] mt-2  border-2 border-[#FC9F36]/50 text-white rounded-lg py-1.5 px-2 font-medium  ">
-            Descargar
-          </button>
+         <button
+  onClick={handleDownload}
+  disabled={loadingDownload}
+  className={`w-full max-w-80 mt-2 rounded-lg py-1.5 px-2 font-medium border-2
+    ${loadingDownload
+      ? "bg-gray-300 border-gray-300 text-white cursor-not-allowed"
+      : "bg-[#FC9F36] border-[#FC9F36]/50 text-white hover:opacity-90"
+    }`}
+>
+  {loadingDownload ? "Descargando..." : "Descargar"}
+</button>
+
 
         </div>
       ) : page == "Indexado" ? (<div className="flex-col flex items-center w-screen space-y-2 mt-6">
@@ -459,9 +468,18 @@ const BACKEND = "https://factura-pdf-1.onrender.com";
 
 
         </div>
-        <button onClick={handleDownload} className="w-full max-w-80 bg-[#FC9F36] mt-2  border-2 border-[#FC9F36]/50 text-white rounded-lg py-1.5 px-2 font-medium  ">
-          Descargar
-        </button>
+        <button
+  onClick={handleDownload}
+  disabled={loadingDownload}
+  className={`w-full max-w-80 mt-2 rounded-lg py-1.5 px-2 font-medium border-2
+    ${loadingDownload
+      ? "bg-gray-300 border-gray-300 text-white cursor-not-allowed"
+      : "bg-[#FC9F36] border-[#FC9F36]/50 text-white hover:opacity-90"
+    }`}
+>
+  {loadingDownload ? "Descargando..." : "Descargar"}
+</button>
+
       </div>) : page == "Gas" ? (
         <div className="flex-col flex items-center w-screen space-y-2 mt-6">
           <div className=" w-full max-w-80 flex flex-col items-start" >
@@ -536,9 +554,18 @@ const BACKEND = "https://factura-pdf-1.onrender.com";
 
 
           </div>
-          <button onClick={handleDownload} className="w-full max-w-80 bg-[#FC9F36] mt-2  border-2 border-[#FC9F36]/50 text-white rounded-lg py-1.5 px-2 font-medium  ">
-            Descargar
-          </button>
+          <button
+  onClick={handleDownload}
+  disabled={loadingDownload}
+  className={`w-full max-w-80 mt-2 rounded-lg py-1.5 px-2 font-medium border-2
+    ${loadingDownload
+      ? "bg-gray-300 border-gray-300 text-white cursor-not-allowed"
+      : "bg-[#FC9F36] border-[#FC9F36]/50 text-white hover:opacity-90"
+    }`}
+>
+  {loadingDownload ? "Descargando..." : "Descargar"}
+</button>
+
 
         </div>
       ) : (
