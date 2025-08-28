@@ -95,33 +95,33 @@ const buildHtml = (data = {}) => {
   const potenciaKwNum = wattsToKwNumber(potencia);            // 4.6 para 4600W
   const potenciaKwText = formatNumberComma(potenciaKwNum, 1); // "4,6"
   const diasNum = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
- // Cálculo del término fijo por periodos
-let importeP1 = 0;
-let importeP2 = 0;
-let totalTerminoFijo = 0;
+  // Cálculo del término fijo por periodos
+  let importeP1 = 0;
+  let importeP2 = 0;
+  let totalTerminoFijo = 0;
   const t = String(tarifa || "").trim();
 
-if (t === "Indexado") {
-  // Periodo 1 y 2 con precios distintos
-  importeP1 = potenciaKwNum * diasNum * 0.0717;
-  importeP2 = potenciaKwNum * diasNum * 0.0031;
-  totalTerminoFijo = importeP1 + importeP2;
-} else {
-  // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
-  const precioKwDia = 0.0819;
-  const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
-  importeP1 = importeTerminoFijo;
-  importeP2 = importeTerminoFijo;
-  totalTerminoFijo = importeP1 + importeP2;
-}
+  if (t === "Indexado") {
+    // Periodo 1 y 2 con precios distintos
+    importeP1 = potenciaKwNum * diasNum * 0.0717;
+    importeP2 = potenciaKwNum * diasNum * 0.0031;
+    totalTerminoFijo = importeP1 + importeP2;
+  } else {
+    // Fijo / Exclusivo: ambos periodos con el mismo precio 0.0819
+    const precioKwDia = 0.0819;
+    const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
+    importeP1 = importeTerminoFijo;
+    importeP2 = importeTerminoFijo;
+    totalTerminoFijo = importeP1 + importeP2;
+  }
 
-let precioKwDiaTextP1 = "0,0819 €/kW día";
-let precioKwDiaTextP2 = "0,0819 €/kW día";
+  let precioKwDiaTextP1 = "0,0819 €/kW día";
+  let precioKwDiaTextP2 = "0,0819 €/kW día";
 
-if (t === "Indexado") {
-  precioKwDiaTextP1 = "0,0717 €/kW día";
-  precioKwDiaTextP2 = "0,0031 €/kW día";
-}
+  if (t === "Indexado") {
+    precioKwDiaTextP1 = "0,0717 €/kW día";
+    precioKwDiaTextP2 = "0,0031 €/kW día";
+  }
   // Consumos numéricos
   const consumoTotal = toNum(consumo);
   const cP1 = toNum(consumoP1);
@@ -146,6 +146,13 @@ if (t === "Indexado") {
     priceP1 = 0.1099;
     priceP2 = 0.1099; // no usados
     priceP3 = 0.1099;
+  } else if (t === "Gas") {
+    kWh1 = consumoTotal;
+    kWh2 = 0;
+    kWh3 = 0;
+    priceP1 = 0.0799;
+    priceP2 = 0.0799; // no usados
+    priceP3 = 0.0799;
   } else {
     // Fijo (por defecto)
     kWh1 = consumoTotal;
@@ -193,39 +200,49 @@ if (t === "Indexado") {
   // Textos formateados
   const bonoDiaText = `${formatNumberComma(bonoDia, 6)} €/día`;
   const alquilerDiaText = `${formatNumberComma(alquilerDia, 5)} €/día`; // ajusta decimales si quieres
-  // =====================
-  // Cálculo Impuestos
-  // =====================
+ // =====================
+// Cálculo Impuestos
+// =====================
 
-  // Base para Impuesto Eléctrico: suma de término fijo + energía
-  const baseImpuestoElectrico = (totalTerminoFijo || 0) + (totalEnergia || 0);
+// Base para Impuesto Eléctrico (solo electricidad): término fijo + energía
+const baseImpuestoElectrico = (totalTerminoFijo || 0) + (totalEnergia || 0);
 
-  // Tipo de Impuesto Eléctrico (5,11269632%)
-  const tipoImpuestoElectrico = 0.0511269632;
+// Tipo de Impuesto Eléctrico general (electricidad)
+const tipoImpuestoElectrico = 0.0511269632;
 
-  // Importe de Impuesto Eléctrico
-  const importeImpuestoElectrico = baseImpuestoElectrico * tipoImpuestoElectrico;
+// Si es GAS: impuesto por hidrocarburos del gas = consumo(kWh) * 0.00234 €
+// Ojo: para Gas usaste kWh1 = consumoTotal arriba.
+let importeImpuesto;
+let impLabel;
+let baseImpLabel;
+if (t === "Gas") {
+  importeImpuesto = (kWh1 || 0) * 0.00234; // 0.00234 €/kWh de gas
+  impLabel = "Impuesto hidrocarburos (gas)";
+  baseImpLabel = `${formatNumberComma(kWh1, 2)} kWh × 0,00234 €/kWh`;
+} else {
+  importeImpuesto = baseImpuestoElectrico * tipoImpuestoElectrico; // 5,11269632% electricidad
+  impLabel = "Impuesto Eléctrico";
+  baseImpLabel = `${formatNumberComma(baseImpuestoElectrico, 2)} € × ${formatNumberComma(tipoImpuestoElectrico * 100, 8)} %`;
+}
 
-  // Base para IVA: suma de término fijo + energía + varios + impuesto eléctrico
-  const baseIVA = baseImpuestoElectrico + (totalVarios || 0) + importeImpuestoElectrico;
+// Base para IVA: suma de término fijo + energía + varios + impuesto
+const baseIVA = ((totalTerminoFijo || 0) + (totalEnergia || 0) + (totalVarios || 0) + importeImpuesto);
 
-  // Tipo de IVA (21%)
-  const tipoIVA = 0.21;
+// Tipo de IVA (21%)
+const tipoIVA = 0.21;
 
-  // Importe de IVA
-  const importeIVA = baseIVA * tipoIVA;
+// Importe de IVA
+const importeIVA = baseIVA * tipoIVA;
 
-  // Total de la sección "Impuestos"
-  const totalImpuestos = importeImpuestoElectrico + importeIVA;
+// Total de la sección "Impuestos"
+const totalImpuestos = importeImpuesto + importeIVA;
 
-  // Textos formateados para mostrar
-  const baseImpElecText = `${formatNumberComma(baseImpuestoElectrico, 2)} €`;
-  const tipoImpElecText = `${formatNumberComma(tipoImpuestoElectrico * 100, 8)} %`;
-  const impElecText = euro(importeImpuestoElectrico);
+// Textos formateados para mostrar
+const impElecText = euro(importeImpuesto);
+const tipoIVAText = `${formatNumberComma(tipoIVA * 100, 2)} %`;
+const ivaText = euro(importeIVA);
+const totalImpuestosText = euro(totalImpuestos);
 
-  const tipoIVAText = `${formatNumberComma(tipoIVA * 100, 2)} %`;
-  const ivaText = euro(importeIVA);
-  const totalImpuestosText = euro(totalImpuestos);
   // =====================
   // TOTAL GENERAL
   // =====================
@@ -234,14 +251,14 @@ if (t === "Indexado") {
   // =====================
   // ACTUAL y AHORRO
   // =====================
- // ACTUAL: exactamente el valor de "otros" que llega del front
-const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
-const actualText = euro(otrosNum);
+  // ACTUAL: exactamente el valor de "otros" que llega del front
+  const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
+  const actualText = euro(otrosNum);
 
-// AHORRO: otros - totalGeneral, pero nunca negativo
-const ahorroBruto = otrosNum - (totalGeneral || 0);
-const ahorroNum = Math.max(0, ahorroBruto);
-const ahorroText = euro(ahorroNum);
+  // AHORRO: otros - totalGeneral, pero nunca negativo
+  const ahorroBruto = otrosNum - (totalGeneral || 0);
+  const ahorroNum = Math.max(0, ahorroBruto);
+  const ahorroText = euro(ahorroNum);
 
 
   return `
@@ -295,10 +312,11 @@ const ahorroText = euro(ahorroNum);
                 <div>Período 1</div>
                 <div>${euro(importeP1)}</div>
               </div>
-              <div class="flex justify-between">
-                <div>Período 2</div>
-                <div>${euro(importeP2)}</div>
-              </div>
+              ${t == "Gas" ? (<></>) : (<div class="flex justify-between">
+      <div>Período 2</div>
+      <div>${euro(importeP2)}</div>
+    </div>)}
+              
             </div>
           </div>
 
@@ -311,13 +329,14 @@ const ahorroText = euro(ahorroNum);
   <div>×</div>
 <div>${precioKwDiaTextP1}</div>
 </div>
-<div class="flex justify-between w-full">
+${t == "Gas" ? (<></>) : (<div class="flex justify-between w-full">
   <div>${potenciaKwText} kW</div>
   <div>×</div>
   <div>${diasFactura} días</div>
   <div>×</div>
 <div>${precioKwDiaTextP2}</div>
-</div>
+</div>)}
+
 
             </div>
           </div>
@@ -325,7 +344,8 @@ const ahorroText = euro(ahorroNum);
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Es el importe que pagas por estar conectado a la red a tu distribuidora y por la cuota de comercialización a Repsol.
+              <
+              ${t == "Gas" ? ("Es el importe que pagas por tener acceso a la red de gas y por la cuota de comercialización a Repsol.") : ("Es el importe que pagas por estar conectado a la red a tu distribuidora y por la cuota de comercialización a Repsol.")}
               </div>
             </div>
           </div>
@@ -380,7 +400,8 @@ const ahorroText = euro(ahorroNum);
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Es el importe variable que pagas por la electricidad que has utilizado. Se calcula en función de los kWh consumidos y el precio de cada kWh.
+                ${t == "Gas" ? ("Es el importe variable que pagas por el gas que has utilizado. Se calcula en función de los kWh consumidos y el precio de cada kWh.") : ("Es el importe variable que pagas por la electricidad que has utilizado. Se calcula en función de los kWh consumidos y el precio de cada kWh.")}
+                
               </div>
             </div>
           </div>
@@ -397,11 +418,12 @@ const ahorroText = euro(ahorroNum);
 
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
-              <div class="flex justify-between">
-                <div>Financiación del Bono Social</div>
-<div>${euro(totalBono)}</div>
+             
+               ${t == "Gas" ? (<></>) : (<div class="flex justify-between">
+      <div>Financiación del Bono Social</div>
+      <div>${euro(totalBono)}</div>
 
-              </div>
+    </div>)} 
               <div class="flex justify-between">
                 <div>  Alquiler del contador </div>
 <div>${euro(totalAlquiler)}</div>
@@ -412,11 +434,12 @@ const ahorroText = euro(ahorroNum);
           </div>
 
           <div class="flex flex-col space-y-1.5">
-            <div class="flex space-x-1 w-full justify-end">
-  <div>${diasFactura} días</div>
-  <div>×</div>
-  <div>${bonoDiaText}</div>
-</div>
+          ${t == "Gas" ? (<></>) : (<div class="flex space-x-1 w-full justify-end">
+              <div>${diasFactura} días</div>
+              <div>×</div>
+              <div>${bonoDiaText}</div>
+            </div>)} 
+            
 <div class="flex space-x-1 w-full justify-end">
   <div>${diasFactura} días</div>
   <div>×</div>
@@ -447,7 +470,7 @@ const ahorroText = euro(ahorroNum);
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
-               <div>Impuesto Eléctrico</div>
+               <div>${impLabel}</div>
 <div>${impElecText}</div>
 
               </div>
@@ -461,11 +484,20 @@ const ahorroText = euro(ahorroNum);
           </div>
 
           <div class="flex flex-col space-y-1.5">
-<div class="flex space-x-1 w-full justify-end">
-  <div>${baseImpElecText}</div>
-  <div>×</div>
-  <div>${tipoImpElecText}</div>
-</div>
+${t === "Gas"
+      ? `
+        <div class="flex space-x-1 w-full justify-end">
+          <div>${baseImpLabel}</div>
+        </div>
+      `
+      : `
+        <div class="flex space-x-1 w-full justify-end">
+          <div>${baseImpElecText}</div>
+          <div>×</div>
+          <div>${tipoImpElecText}</div>
+        </div>
+      `
+    }
 <div class="flex space-x-1 w-full justify-end">
   <div>${formatNumberComma(baseIVA, 2)} €</div>
   <div>×</div>
@@ -478,7 +510,9 @@ const ahorroText = euro(ahorroNum);
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Incluimos en tu factura los impuestos regulados, como el Impuesto Eléctrico sobre el consumo y el IVA sobre el total.
+                 ${t == "Gas"
+          ? "Incluimos el impuesto de hidrocarburos del gas sobre el consumo (kWh), además del IVA correspondiente."
+          : "Incluimos el Impuesto Especial de Electricidad sobre consumo y potencia, además del IVA sobre el total."}
               </div>
             </div>
           </div>
