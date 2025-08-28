@@ -164,7 +164,7 @@ const buildHtml = (data = {}) => {
   if (t === "Gas") {
     // Solo P1: consumo total; precio 0,79 €/kWh
     kWh1 = consumoTotal; kWh2 = 0; kWh3 = 0;
-    priceP1 = 0.79; priceP2 = 0.79; priceP3 = 0.79; // no se usan P2/P3
+    priceP1 = 0.079; priceP2 = 0.079; priceP3 = 0.079; // no se usan P2/P3
   } else if (t === "Indexado") {
     kWh1 = cP1; kWh2 = cP2; kWh3 = cP3;
     priceP1 = 0.154; priceP2 = 0.103; priceP3 = 0.0724;
