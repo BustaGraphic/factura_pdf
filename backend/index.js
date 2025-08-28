@@ -128,7 +128,7 @@ function euro(n) {
 
 // Complete buildHtml function
 const buildHtml = (data = {}) => {
-  const {
+ const {
     name = "Ejemplo",
     comercial = "",
     tarifa = "",
@@ -142,36 +142,17 @@ const buildHtml = (data = {}) => {
     consumoP2 = "",
     consumoP3 = "",
   } = data;
-  
+
   const potenciaKwNum = wattsToKwNumber(potencia);
   const potenciaKwText = formatNumberComma(potenciaKwNum, 1);
   const diasNum = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
-  
-  let importeP1 = 0;
-  let importeP2 = 0;
-  let totalTerminoFijo = 0;
+
+  // Tarifa normalizada
   const t = String(tarifa || "").trim();
 
-  if (t === "Indexado") {
-    importeP1 = potenciaKwNum * diasNum * 0.0717;
-    importeP2 = potenciaKwNum * diasNum * 0.0031;
-    totalTerminoFijo = importeP1 + importeP2;
-  } else {
-    const precioKwDia = 0.0819;
-    const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
-    importeP1 = importeTerminoFijo;
-    importeP2 = importeTerminoFijo;
-    totalTerminoFijo = importeP1 + importeP2;
-  }
-
-  let precioKwDiaTextP1 = "0,0819 €/kW día";
-  let precioKwDiaTextP2 = "0,0819 €/kW día";
-
-  if (t === "Indexado") {
-    precioKwDiaTextP1 = "0,0717 €/kW día";
-    precioKwDiaTextP2 = "0,0031 €/kW día";
-  }
-
+  // --------------------------
+  // Energía (kWh * precio)
+  // --------------------------
   const consumoTotal = toNum(consumo);
   const cP1 = toNum(consumoP1);
   const cP2 = toNum(consumoP2);
@@ -180,13 +161,18 @@ const buildHtml = (data = {}) => {
   let priceP1 = 0, priceP2 = 0, priceP3 = 0;
   let kWh1 = 0, kWh2 = 0, kWh3 = 0;
 
-  if (t === "Indexado") {
+  if (t === "Gas") {
+    // Solo P1: consumo total; precio 0,79 €/kWh
+    kWh1 = consumoTotal; kWh2 = 0; kWh3 = 0;
+    priceP1 = 0.79; priceP2 = 0.79; priceP3 = 0.79; // no se usan P2/P3
+  } else if (t === "Indexado") {
     kWh1 = cP1; kWh2 = cP2; kWh3 = cP3;
     priceP1 = 0.154; priceP2 = 0.103; priceP3 = 0.0724;
   } else if (t === "Exclusivo") {
     kWh1 = consumoTotal; kWh2 = 0; kWh3 = 0;
     priceP1 = 0.1099; priceP2 = 0.1099; priceP3 = 0.1099;
   } else {
+    // Fijo
     kWh1 = consumoTotal; kWh2 = 0; kWh3 = 0;
     priceP1 = 0.1299; priceP2 = 0.1299; priceP3 = 0.1299;
   }
@@ -199,105 +185,150 @@ const buildHtml = (data = {}) => {
   const kWh1Text = `${formatNumberComma(kWh1, 2)} kWh`;
   const kWh2Text = `${formatNumberComma(kWh2, 2)} kWh`;
   const kWh3Text = `${formatNumberComma(kWh3, 2)} kWh`;
-  const priceP1Text = `${formatNumberComma(priceP1, 4)} €/kWh`;
+
+  // Muestra precio con decimales adecuados; para gas saldrá "0,79 €/kWh"
+  const priceP1Text = `${formatNumberComma(priceP1, t === "Gas" ? 2 : 4)} €/kWh`;
   const priceP2Text = `${formatNumberComma(priceP2, 4)} €/kWh`;
   const priceP3Text = `${formatNumberComma(priceP3, 4)} €/kWh`;
-  
+
+  // --------------------------
+  // Término fijo
+  // --------------------------
+  let importeP1 = 0;
+  let importeP2 = 0;
+  let totalTerminoFijo = 0;
+
+  if (t === "Gas") {
+    // Un único periodo: días × 0,21€
+    importeP1 = diasNum * 0.21;
+    importeP2 = 0;
+    totalTerminoFijo = importeP1;
+  } else if (t === "Indexado") {
+    importeP1 = potenciaKwNum * diasNum * 0.0717;
+    importeP2 = potenciaKwNum * diasNum * 0.0031;
+    totalTerminoFijo = importeP1 + importeP2;
+  } else {
+    const precioKwDia = 0.0819;
+    const importeTerminoFijo = potenciaKwNum * diasNum * precioKwDia;
+    importeP1 = importeTerminoFijo;
+    importeP2 = importeTerminoFijo;
+    totalTerminoFijo = importeP1 + importeP2;
+  }
+
+  // Textos de precios de término fijo
+  let precioKwDiaTextP1 = "0,0819 €/kW día";
+  let precioKwDiaTextP2 = "0,0819 €/kW día";
+  if (t === "Indexado") {
+    precioKwDiaTextP1 = "0,0717 €/kW día";
+    precioKwDiaTextP2 = "0,0031 €/kW día";
+  } else if (t === "Gas") {
+    // En gas no depende de kW
+    precioKwDiaTextP1 = "0,21 €/día";
+    precioKwDiaTextP2 = "";
+  }
+
+  // --------------------------
+  // Varios: bono y alquiler
+  // --------------------------
   const diasN = Number(String(diasFactura ?? "").replace(",", ".")) || 0;
   const bonoTotalFront = Number(String(bonoSocial ?? "").replace(",", "."));
   const alquilerTotalFront = Number(String(alquilerContador ?? "").replace(",", "."));
+
   const bonoBaseDia = 0.012742;
   const alquilerBaseDia = 0.02663;
 
   const bonoDia = (Number.isFinite(bonoTotalFront) && bonoTotalFront > 0 && diasN > 0)
-    ? (bonoTotalFront / diasN) : bonoBaseDia;
-  const alquilerDia = (Number.isFinite(alquilerTotalFront) && alquilerTotalFront > 0 && diasN > 0)
-    ? (alquilerTotalFront / diasN) : alquilerBaseDia;
+    ? (bonoTotalFront / diasN)
+    : bonoBaseDia;
 
-  const totalBono = bonoDia * diasN;
+  const alquilerDia = (Number.isFinite(alquilerTotalFront) && alquilerTotalFront > 0 && diasN > 0)
+    ? (alquilerTotalFront / diasN)
+    : alquilerBaseDia;
+
+  // En Gas se oculta Bono Social en el desglose visual, pero mantenemos alquiler
+  const mostrarBono = t !== "Gas";
+
+  const totalBono = mostrarBono ? (bonoDia * diasN) : 0;
   const totalAlquiler = alquilerDia * diasN;
   const totalVarios = totalBono + totalAlquiler;
+
   const bonoDiaText = `${formatNumberComma(bonoDia, 6)} €/día`;
   const alquilerDiaText = `${formatNumberComma(alquilerDia, 5)} €/día`;
-  
+
+  // --------------------------
+  // Impuestos
+  // --------------------------
+  // Base electricidad = término fijo + energía (para luz)
   const baseImpuestoElectrico = (totalTerminoFijo || 0) + (totalEnergia || 0);
   const tipoImpuestoElectrico = 0.0511269632;
-  const importeImpuestoElectrico = baseImpuestoElectrico * tipoImpuestoElectrico;
-  const baseIVA = baseImpuestoElectrico + (totalVarios || 0) + importeImpuestoElectrico;
+
+  let importeImpuesto;
+  let impLabel;
+  let baseImpLabel = "";
+  let baseImpElecText = `${formatNumberComma(baseImpuestoElectrico, 2)} €`;
+  let tipoImpElecText = `${formatNumberComma(tipoImpuestoElectrico * 100, 8)} %`;
+
+  if (t === "Gas") {
+    // Impuesto del gas: consumo(kWh) × 0,00234 €
+    importeImpuesto = (kWh1 || 0) * 0.00234;
+    impLabel = "Impuesto hidrocarburos (gas)";
+    baseImpLabel = `${formatNumberComma(kWh1, 2)} kWh × 0,00234 €/kWh`;
+  } else {
+    importeImpuesto = baseImpuestoElectrico * tipoImpuestoElectrico;
+    impLabel = "Impuesto Eléctrico";
+  }
+
+  // IVA sobre suma total
+  const baseIVA = ((totalTerminoFijo || 0) + (totalEnergia || 0) + (totalVarios || 0) + importeImpuesto);
   const tipoIVA = 0.21;
   const importeIVA = baseIVA * tipoIVA;
-  const totalImpuestos = importeImpuestoElectrico + importeIVA;
+  const totalImpuestos = importeImpuesto + importeIVA;
 
-  const baseImpElecText = `${formatNumberComma(baseImpuestoElectrico, 2)} €`;
-  const tipoImpElecText = `${formatNumberComma(tipoImpuestoElectrico * 100, 8)} %`;
-  const impElecText = euro(importeImpuestoElectrico);
+  const impElecText = euro(importeImpuesto);
   const tipoIVAText = `${formatNumberComma(tipoIVA * 100, 2)} %`;
   const ivaText = euro(importeIVA);
   const totalImpuestosText = euro(totalImpuestos);
-  
+
+  // --------------------------
+  // Totales y cabeceras
+  // --------------------------
   const totalGeneral = (totalEnergia || 0) + (totalTerminoFijo || 0) + (totalVarios || 0) + (totalImpuestos || 0);
   const totalGeneralText = euro(totalGeneral);
-  
+
   const otrosNum = Number(String(otros ?? "").replace(",", ".")) || 0;
   const actualText = euro(otrosNum);
   const ahorroBruto = otrosNum - (totalGeneral || 0);
   const ahorroNum = Math.max(0, ahorroBruto);
   const ahorroText = euro(ahorroNum);
-// --- dentro de buildHtml antes del return --- //
 
-// Datos de comerciales
-const comercialesInfo = {
-  "Dani": {
-    nombre: "Danilo Bustamante",
-    email: "dbustamanterepsol@gmail.com",
-    telefono: "643602308"
-  },
-  "Noah": {
-    nombre: "Noah Nieto",
-    email: "noahnietorodriguez@gmail.com",
-    telefono: "644950652"
-  },
-  "Juan": {
-    nombre: "Juan José Martínez",
-    email: "juanjorepsol@gmail.com",
-    telefono: "640030356"
-  },
-  "Xexu": {
-    nombre: "Vicentiu",
-    email: "ilr.xexuluis@gmail.com",
-    telefono: "633181109"
-  }
-};
+  // Datos de comerciales
+  const comercialesInfo = {
+    "Dani": { nombre: "Danilo Bustamante", email: "dbustamanterepsol@gmail.com", telefono: "643602308" },
+    "Noah": { nombre: "Noah Nieto", email: "noahnietorodriguez@gmail.com", telefono: "644950652" },
+    "Juan": { nombre: "Juan José Martínez", email: "juanjorepsol@gmail.com", telefono: "640030356" },
+    "Xexu": { nombre: "Vicentiu", email: "ilr.xexuluis@gmail.com", telefono: "633181109" }
+  };
 
-// Si el valor coincide, usamos la info del mapa, sino valores genéricos
-const comercialInfo = comercialesInfo[comercial] || {
-  nombre: comercial || "—",
-  email: "",
-  telefono: ""
-};
+  const comercialInfo = comercialesInfo[comercial] || {
+    nombre: comercial || "—",
+    email: "",
+    telefono: ""
+  };
 
-
-    // --- en buildHtml --- //
-
-  // Calcular plan según tarifa
+  // Nombre de plan
   let planName = "Plan Fijo las 24h";
-  if (t === "Exclusivo") {
-    planName = "Plan Exclusivo las 24h";
-  } else if (t === "Indexado") {
-    planName = "Plan Indexado";
-  }
+  if (t === "Exclusivo") planName = "Plan Exclusivo las 24h";
+  else if (t === "Indexado") planName = "Plan Indexado";
+  else if (t === "Gas") planName = "Plan Gas";
 
-  // Calcular ahorro estimado anual
+  // Ahorro anual
   const ahorroAnual = ahorroNum * 12;
   const ahorroAnualText = euro(ahorroAnual);
 
   // Fecha actual
   const today = new Date();
-  const fechaHoy = today.toLocaleDateString("es-ES", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const fechaHoy = today.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+
 return `
 <!DOCTYPE html>
 <html lang="es">
@@ -316,7 +347,7 @@ return `
   </style>
 </head>
 <body class="min-h-screen bg-white">
-  <div class="pdf-root flex justify-center">
+ <div class="pdf-root flex justify-center">
     <div class="py-2.5 px-3.5 grid gap-4 w-full">
 
       <!-- Cabecera -->
@@ -331,7 +362,7 @@ return `
         <img src="${iconRepsolUri}" alt="Logo" class="translate-x-[70px] translate-y-[6px] rotate-6 h-44" />
       </div>
 
-      <!-- Bloque: título + cabeceras de tabla -->
+      <!-- Título + cabeceras de tabla -->
       <div class="flex flex-col">
         <div class="bg-[#F0F5F8] text-sm font-medium py-1 pl-4 flex items-center rounded-t-[20px] border-[2px] border-[#DBE6F0]">
           SIMULACIÓN DE TU FACTURA CON REPSOL
@@ -356,21 +387,30 @@ return `
             <div class="font-semibold">${euro(totalTerminoFijo)}</div>
           </div>
 
+          <!-- Col 1: importes por periodo -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
                 <div>Período 1</div>
                 <div>${euro(importeP1)}</div>
               </div>
+              ${t === "Gas" ? "" : `
               <div class="flex justify-between">
                 <div>Período 2</div>
                 <div>${euro(importeP2)}</div>
-              </div>
+              </div>`}
             </div>
           </div>
 
+          <!-- Col 2: cálculo -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
+              ${t === "Gas" ? `
+              <div class="flex justify-between w-full">
+                <div>${diasFactura} días</div>
+                <div>×</div>
+                <div>${precioKwDiaTextP1}</div>
+              </div>` : `
               <div class="flex justify-between w-full">
                 <div>${potenciaKwText} kW</div>
                 <div>×</div>
@@ -384,14 +424,17 @@ return `
                 <div>${diasFactura} días</div>
                 <div>×</div>
                 <div>${precioKwDiaTextP2}</div>
-              </div>
+              </div>`}
             </div>
           </div>
 
+          <!-- Col 3: descripción -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Es el importe que pagas por estar conectado a la red a tu distribuidora y por la cuota de comercialización a Repsol.
+                ${t === "Gas"
+                  ? "Es el importe fijo del contrato de gas (cuota diaria por acceso y comercialización)."
+                  : "Es el importe que pagas por estar conectado a la red a tu distribuidora y por la cuota de comercialización a Repsol."}
               </div>
             </div>
           </div>
@@ -407,12 +450,14 @@ return `
             <div class="font-semibold">${euro(totalEnergia)}</div>
           </div>
 
+          <!-- Col 1: importes consumo -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
                 <div>Consumo (P1)</div>
                 <div>${euro(impP1)}</div>
               </div>
+              ${t === "Gas" ? "" : `
               <div class="flex justify-between">
                 <div>Consumo (P2)</div>
                 <div>${euro(impP2)}</div>
@@ -420,16 +465,18 @@ return `
               <div class="flex justify-between">
                 <div>Consumo (P3)</div>
                 <div>${euro(impP3)}</div>
-              </div>
+              </div>`}
             </div>
           </div>
 
+          <!-- Col 2: cálculo -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-x-1 w-full justify-end">
               <div>${kWh1Text}</div>
               <div>×</div>
               <div>${priceP1Text}</div>
             </div>
+            ${t === "Gas" ? "" : `
             <div class="flex space-x-1 w-full justify-end">
               <div>${kWh2Text}</div>
               <div>×</div>
@@ -439,13 +486,16 @@ return `
               <div>${kWh3Text}</div>
               <div>×</div>
               <div>${priceP3Text}</div>
-            </div>
+            </div>`}
           </div>
 
+          <!-- Col 3: descripción -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Es el importe variable que pagas por la electricidad que has utilizado. Se calcula en función de los kWh consumidos y el precio de cada kWh.
+                ${t === "Gas"
+                  ? "Es el importe variable que pagas por el gas consumido. Se calcula en función de los kWh y el precio por kWh."
+                  : "Es el importe variable que pagas por la electricidad consumida. Se calcula en función de los kWh y el precio por kWh."}
               </div>
             </div>
           </div>
@@ -461,12 +511,14 @@ return `
             <div class="font-semibold">${euro(totalVarios)}</div>
           </div>
 
+          <!-- Col 1: conceptos -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
+              ${t === "Gas" ? "" : `
               <div class="flex justify-between">
                 <div>Financiación del Bono Social</div>
                 <div>${euro(totalBono)}</div>
-              </div>
+              </div>`}
               <div class="flex justify-between">
                 <div>Alquiler del contador</div>
                 <div>${euro(totalAlquiler)}</div>
@@ -474,12 +526,14 @@ return `
             </div>
           </div>
 
+          <!-- Col 2: cálculo -->
           <div class="flex flex-col space-y-1.5">
+            ${t === "Gas" ? "" : `
             <div class="flex space-x-1 w-full justify-end">
               <div>${diasFactura} días</div>
               <div>×</div>
               <div>${bonoDiaText}</div>
-            </div>
+            </div>`}
             <div class="flex space-x-1 w-full justify-end">
               <div>${diasFactura} días</div>
               <div>×</div>
@@ -487,10 +541,13 @@ return `
             </div>
           </div>
 
+          <!-- Col 3: descripción -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Aquí se muestra la financiación del bono social y el alquiler del contador si no es de tu propiedad.
+                ${t === "Gas"
+                  ? "Incluimos el alquiler del contador si no es de tu propiedad."
+                  : "Aquí se muestra la financiación del bono social y el alquiler del contador si no es de tu propiedad."}
               </div>
             </div>
           </div>
@@ -506,10 +563,11 @@ return `
             <div class="font-semibold">${totalImpuestosText}</div>
           </div>
 
+          <!-- Col 1: títulos e importes -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex flex-col space-y-1">
               <div class="flex justify-between">
-                <div>Impuesto Eléctrico</div>
+                <div>${impLabel}</div>
                 <div>${impElecText}</div>
               </div>
               <div class="flex justify-between">
@@ -519,12 +577,17 @@ return `
             </div>
           </div>
 
+          <!-- Col 2: fórmulas -->
           <div class="flex flex-col space-y-1.5">
+            ${t === "Gas" ? `
+            <div class="flex space-x-1 w-full justify-end">
+              <div>${baseImpLabel}</div>
+            </div>` : `
             <div class="flex space-x-1 w-full justify-end">
               <div>${baseImpElecText}</div>
               <div>×</div>
               <div>${tipoImpElecText}</div>
-            </div>
+            </div>`}
             <div class="flex space-x-1 w-full justify-end">
               <div>${formatNumberComma(baseIVA, 2)} €</div>
               <div>×</div>
@@ -532,16 +595,19 @@ return `
             </div>
           </div>
 
+          <!-- Col 3: descripción -->
           <div class="flex flex-col space-y-1.5">
             <div class="flex space-y-1 h-full items-start">
               <div class="flex justify-between text-[10px]">
-                Incluimos en tu factura los impuestos regulados, como el Impuesto Eléctrico sobre el consumo y el IVA sobre el total.
+                ${t === "Gas"
+                  ? "Incluimos el impuesto de hidrocarburos del gas aplicado al consumo (kWh) y el IVA correspondiente."
+                  : "Incluimos el Impuesto Especial de Electricidad sobre consumo y potencia, además del IVA sobre el total."}
               </div>
             </div>
           </div>
         </div>
-        
-        <!-- Total Row -->
+
+        <!-- Totales -->
         <div class="text-[12px] rounded-b-[20px] font-medium py-3 -mt-[2px] text-[#011E37] px-3 border-[2px] border-[#DBE6F0] flex justify-between gap-[8px] my-2">
           <div class="flex justify-between py-1 px-1.5 rounded-md bg-[#DBE6F0] basis-[33%] shrink-0 grow-0">
             <div class="flex items-center space-x-1 font-semibold">
