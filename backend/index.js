@@ -187,7 +187,7 @@ const buildHtml = (data = {}) => {
   const kWh3Text = `${formatNumberComma(kWh3, 2)} kWh`;
 
   // Muestra precio con decimales adecuados; para gas saldrá "0,79 €/kWh"
-  const priceP1Text = `${formatNumberComma(priceP1, t === "Gas" ? 2 : 4)} €/kWh`;
+  const priceP1Text = `${formatNumberComma(priceP1, t === "Gas" ? 3 : 4)} €/kWh`;
   const priceP2Text = `${formatNumberComma(priceP2, 4)} €/kWh`;
   const priceP3Text = `${formatNumberComma(priceP3, 4)} €/kWh`;
 
@@ -241,9 +241,17 @@ const buildHtml = (data = {}) => {
     ? (bonoTotalFront / diasN)
     : bonoBaseDia;
 
-  const alquilerDia = (Number.isFinite(alquilerTotalFront) && alquilerTotalFront > 0 && diasN > 0)
+  // Alquiler del contador
+let alquilerDia;
+if (t === "Gas") {
+  alquilerDia = 0.019; // €/día fijo para Gas
+} else {
+  const alquilerBaseDia = 0.02663;
+  alquilerDia = (Number.isFinite(alquilerTotalFront) && alquilerTotalFront > 0 && diasN > 0)
     ? (alquilerTotalFront / diasN)
     : alquilerBaseDia;
+}
+
 
   // En Gas se oculta Bono Social en el desglose visual, pero mantenemos alquiler
   const mostrarBono = t !== "Gas";
@@ -253,8 +261,7 @@ const buildHtml = (data = {}) => {
   const totalVarios = totalBono + totalAlquiler;
 
   const bonoDiaText = `${formatNumberComma(bonoDia, 6)} €/día`;
-  const alquilerDiaText = `${formatNumberComma(alquilerDia, 5)} €/día`;
-
+const alquilerDiaText = `${formatNumberComma(alquilerDia, t === "Gas" ? 3 : 5)} €/día`;
   // --------------------------
   // Impuestos
   // --------------------------
