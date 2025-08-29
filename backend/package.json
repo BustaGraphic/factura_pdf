@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": {
-  "start": "node index.js",
-  "dev": "nodemon index.js",
-  "build": "echo 'Build complete - Node.js backend ready'"
-},
+  "scripts": {
+    "start": "node api.js && node index.js",
+    "dev": "node api.js && nodemon index.js",
+    "build": "echo 'Build complete - Node.js backend ready'"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
