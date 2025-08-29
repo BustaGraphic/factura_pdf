@@ -312,7 +312,7 @@ const alquilerDiaText = `${formatNumberComma(alquilerDia, t === "Gas" ? 3 : 5)} 
   const comercialesInfo = {
     "Dani": { nombre: "Danilo Bustamante", email: "dbustamanterepsol@gmail.com", telefono: "643602308" },
     "Noah": { nombre: "Noah Nieto", email: "noahnietorodriguez@gmail.com", telefono: "644950652" },
-    "Juan": { nombre: "Juan José Martínez", email: "juanjorepsol@gmail.com", telefono: "640030356" },
+    "Juan": { nombre: "Juan José González", email: "juanjosedavid2013@gmail.com", telefono: "631651951" },
     "Xexu": { nombre: "Vicentiu", email: "ilr.xexuluis@gmail.com", telefono: "633181109" }
   };
 
